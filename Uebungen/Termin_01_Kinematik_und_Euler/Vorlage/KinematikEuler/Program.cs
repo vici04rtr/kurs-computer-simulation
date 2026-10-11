@@ -1,5 +1,6 @@
 using KinematikEuler.Models;
 using KinematikEuler.Solvers;
+using KinematikEuler.Output;
 
 namespace KinematikEuler;
 
@@ -104,15 +105,88 @@ internal class Program
         Console.WriteLine("   3. CSV-Export nach simulation_cylinder.csv.");
     }
 
-    /// <summary>
-    /// Stufe B: Track B - Artillery Duel mit Newton-Drag & Wind (Gerüst).
-    /// </summary>
+    /// <summary>Stufe B: Track B - Retro Artillery Duel mit Newton-Drag & Wind.</summary>
     private static void RunTrackB_ArtilleryGame()
     {
         Console.WriteLine("\n--- [Stufe B Track B] Retro Artillery Duel ---");
-        Console.WriteLine("// TODO: [Stufe B Track B] Implementieren Sie:");
-        Console.WriteLine("   1. Quadratischen Newton-Luftwiderstand F_drag = 0.5 * rho * Cw * A * v_rel^2.");
-        Console.WriteLine("   2. Stochastische Windböen v_wind(t).");
-        Console.WriteLine("   3. Rundenbasiertes 2-Spieler-Konsolenspiel.");
+
+        var engine = new BallisticEngine();
+        Console.WriteLine($"Ziel: x = {engine.TargetX:F0} m, y_terrain = {engine.TargetY:F2} m, v0 = {engine.MuzzleVelocity:F0} m/s\n");
+
+        PrintSolverComparison(engine);
+        PrintWindSignTest(engine);
+        PlayRandomRounds(engine, rounds: 5);
+    }
+
+    private static void PrintSolverComparison(BallisticEngine engine)
+    {
+        double angleRad = 30.0 * Math.PI / 180.0;
+        var reference = ShotSimulator.Simulate(engine, angleRad, 0.0, SolverKind.Heun, 0.001,
+                                               recordTrajectory: false).Impact;
+
+        Console.WriteLine("=== EULER vs. HEUN (alpha = 30 Grad, kein Wind, Referenz: Heun dt = 0.001 s) ===");
+        Console.WriteLine($"{"Solver",-8}{"dt [s]",8}{"t_impact [s]",15}{"x_impact [m]",15}{"Fehler x [m]",15}");
+
+        foreach (var solver in new[] { SolverKind.Euler, SolverKind.Heun })
+        {
+            foreach (double dt in new[] { 0.1, 0.01 })
+            {
+                var r = ShotSimulator.Simulate(engine, angleRad, 0.0, solver, dt, recordTrajectory: false).Impact;
+                Console.WriteLine($"{solver,-8}{dt,8:F3}{r.Time,15:F3}{r.X,15:F2}{r.X - reference.X,15:+0.00;-0.00}");
+            }
+        }
+        Console.WriteLine();
+    }
+
+    private static void PrintWindSignTest(BallisticEngine engine)
+    {
+        Console.WriteLine("=== WINDVORZEICHEN-TEST (flache Bahn, Heun dt = 0.01 s) ===");
+
+        foreach (double wx in new[] { -10.0, 0.0, 10.0 })
+        {
+            string label = wx < 0 ? "Gegenwind" : wx > 0 ? "Rueckenwind" : "kein Wind";
+            var angles = AngleFinder.FindAnglesDeg(engine, wx);
+
+            if (angles.Count == 0)
+            {
+                Console.WriteLine($"wx = {wx,6:F1} m/s ({label}): kein Treffwinkel gefunden");
+                continue;
+            }
+
+            double a = angles[0];
+            var r = ShotSimulator.Simulate(engine, a * Math.PI / 180.0, wx, SolverKind.Heun, 0.01,
+                                           recordTrajectory: false).Impact;
+            Console.WriteLine($"wx = {wx,6:F1} m/s ({label,-11}): alpha = {a,7:F3} Grad | t = {r.Time:F3} s | x = {r.X:F2} m");
+        }
+        Console.WriteLine("Erwartung: Gegenwind -> groesserer Winkel, Rueckenwind -> kleinerer Winkel als ohne Wind.\n");
+    }
+
+    private static void PlayRandomRounds(BallisticEngine engine, int rounds)
+    {
+        var rng = new Random(42); // feste Seed = reproduzierbar; fuer echten Zufall: new Random()
+
+        for (int i = 1; i <= rounds; i++)
+        {
+            double wx = rng.NextDouble() * 30.0 - 15.0; // U(-15, +15) m/s
+            Console.WriteLine($"--- Schuss {i}: Wind wx = {wx:+0.00;-0.00} m/s ---");
+
+            var angles = AngleFinder.FindAnglesDeg(engine, wx);
+            if (angles.Count == 0)
+            {
+                Console.WriteLine("Kein Winkel im Bereich [10, 80] Grad trifft das Ziel.\n");
+                continue;
+            }
+
+            double alphaDeg = angles[0]; // flache Bahn
+            var shot = ShotSimulator.Simulate(engine, alphaDeg * Math.PI / 180.0, wx, SolverKind.Heun, 0.01);
+
+            Console.WriteLine($"Zielwinkel = {alphaDeg:F3} Grad | Flugdauer = {shot.Impact.Time:F3} s | " +
+                              $"x_impact = {shot.Impact.X:F2} m (Ziel {engine.TargetX:F0} m)");
+            Console.WriteLine(ShotOutput.RenderAscii(shot.Trajectory, engine));
+
+            string path = $"shot_{i}.csv";
+            ShotOutput.WriteCsv(path, shot.Trajectory);
+            Console.WriteLine($"CSV: {Path.GetFullPath(path)}\n");
+        }
     }
 }
