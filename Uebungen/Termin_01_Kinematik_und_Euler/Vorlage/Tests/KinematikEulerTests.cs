@@ -81,4 +81,85 @@ public class KinematikEulerTests
         Assert.IsTrue(errorSmall < errorLarge * 0.65, 
             $"Fehler bei dt=0.05 ({errorSmall}) muss deutlich kleiner sein als bei dt=0.1 ({errorLarge}).");
     }
+
+    // Ab hier Tests selbst eingefügt
+    private static double DragK(BallisticEngine e) =>
+    0.5 * e.AirDensity * e.DragCoefficient * e.CrossSection / e.Mass;
+
+    [TestMethod]
+    public void Test_Drag_IsComputedFromVectorMagnitude()
+    {
+        var e = new BallisticEngine();
+        var s = new KinematicState(0, 0, 0, Vx: 100.0, Vy: 60.0);
+
+        var (ax, ay) = e.Acceleration(s, 0.0);
+        double dragAy = ay + e.Gravity;
+
+        // Widerstand wirkt antiparallel zu v -> Verhältnis der Komponenten = vx/vy
+        Assert.AreEqual(100.0 / 60.0, ax / dragAy, 1e-9);
+        // Betrag über |v| = sqrt(vx^2+vy^2), NICHT vx^2 bzw. vy^2 getrennt
+        Assert.AreEqual(-DragK(e) * s.Speed * 100.0, ax, 1e-9);
+    }
+
+    [TestMethod]
+    public void Test_Wind_Sign_HeadwindBrakesMore_TailwindBrakesLess()
+    {
+        var e = new BallisticEngine();
+        var s = new KinematicState(0, 0, 0, Vx: 100.0, Vy: 0.0);
+
+        double axNone = e.Acceleration(s, 0.0).ax;
+        double axHead = e.Acceleration(s, -10.0).ax;
+        double axTail = e.Acceleration(s, +10.0).ax;
+
+        Assert.IsTrue(axHead < axNone, "Gegenwind muss staerker bremsen.");
+        Assert.IsTrue(axTail > axNone, "Rueckenwind muss weniger bremsen.");
+        Assert.AreEqual(0.0, e.Acceleration(s, 100.0).ax, 1e-12, "Keine Relativbewegung -> kein Widerstand.");
+    }
+
+    [TestMethod]
+    public void Test_TerrainInterpolation_FlatTerrain_MatchesGroundInterpolation()
+    {
+        var prev = new KinematicState(1.0, 10.0, 2.0, 10.0, -10.0);
+        var curr = new KinematicState(1.1, 11.0, -1.0, 10.0, -10.0);
+
+        var impact = ShotSimulator.InterpolateTerrainImpact(prev, curr, _ => 0.0);
+
+        Assert.AreEqual(1.0 + (2.0 / 3.0) * 0.1, impact.Time, 1e-9);
+        Assert.AreEqual(10.0 + 2.0 / 3.0, impact.X, 1e-9);
+    }
+
+    [TestMethod]
+    public void Test_AngleFinder_HitsTarget_UnderHeadAndTailwind()
+    {
+        var e = new BallisticEngine();
+        double angleHead = 0, angleTail = 0;
+
+        foreach (double wx in new[] { -12.0, 0.0, 12.0 })
+        {
+            var angles = AngleFinder.FindAnglesDeg(e, wx);
+            Assert.IsTrue(angles.Count > 0, $"Kein Winkel bei wx = {wx}");
+
+            var impact = ShotSimulator.Simulate(e, angles[0] * Math.PI / 180.0, wx,
+                SolverKind.Heun, 0.01, recordTrajectory: false).Impact;
+            Assert.AreEqual(e.TargetX, impact.X, 1.5, $"Ziel verfehlt bei wx = {wx}");
+
+            if (wx < 0) angleHead = angles[0];
+            if (wx > 0) angleTail = angles[0];
+        }
+
+        Assert.IsTrue(angleHead > angleTail, "Gegenwind braucht einen groesseren Winkel als Rueckenwind.");
+    }
+
+    [TestMethod]
+    public void Test_Heun_IsMoreAccurateThanEuler_AtSameStepSize()
+    {
+        var e = new BallisticEngine();
+        double a = 30.0 * Math.PI / 180.0;
+
+        double reference = ShotSimulator.Simulate(e, a, 0.0, SolverKind.Heun, 0.001, recordTrajectory: false).Impact.X;
+        double errEuler = Math.Abs(ShotSimulator.Simulate(e, a, 0.0, SolverKind.Euler, 0.1, recordTrajectory: false).Impact.X - reference);
+        double errHeun = Math.Abs(ShotSimulator.Simulate(e, a, 0.0, SolverKind.Heun, 0.1, recordTrajectory: false).Impact.X - reference);
+
+        Assert.IsTrue(errHeun < errEuler / 10.0, $"Heun {errHeun} sollte viel genauer sein als Euler {errEuler}.");
+    }
 }
