@@ -22,7 +22,7 @@ public static class AngleFinder
         double minDeg = 10.0,
         double maxDeg = 80.0,
         double sweepStepDeg = 0.1,
-        double toleranceM = 0.01)
+        double toleranceM = 1.5)
     {
         double Error(double deg) =>
             ShotSimulator.Simulate(engine, deg * Math.PI / 180.0, windX, solver, dt,

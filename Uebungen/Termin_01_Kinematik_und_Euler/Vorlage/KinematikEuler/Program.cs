@@ -142,7 +142,7 @@ internal class Program
     {
         Console.WriteLine("=== WINDVORZEICHEN-TEST (flache Bahn, Heun dt = 0.01 s) ===");
 
-        foreach (double wx in new[] { -10.0, 0.0, 10.0 })
+        foreach (double wx in new[] { -100, -10.0, 0.0, 10.0, 100 })
         {
             string label = wx < 0 ? "Gegenwind" : wx > 0 ? "Rueckenwind" : "kein Wind";
             var angles = AngleFinder.FindAnglesDeg(engine, wx);
@@ -163,7 +163,7 @@ internal class Program
 
     private static void PlayRandomRounds(BallisticEngine engine, int rounds)
     {
-        var rng = new Random(42); // feste Seed = reproduzierbar; fuer echten Zufall: new Random()
+        var rng = new Random();
 
         for (int i = 1; i <= rounds; i++)
         {

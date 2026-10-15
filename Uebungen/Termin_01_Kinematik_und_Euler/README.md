@@ -24,8 +24,6 @@ KinematikEuler/
 ├── Output/
 │   └── ShotOutput.cs            ASCII-Plot und CSV-Export
 └── Program.cs                   Steuerung und Konsolenausgabe
-Tests/
-└── KinematikEulerTests.cs       Unit-Tests (MSTest)
 ```
 
 **Entkopplung:**
@@ -120,7 +118,7 @@ Gelände y(x) = 50·sin(0,002x) + 20·cos(0,005x), Ziel bei x = 1400 m.
 - **Zielhöhe:** Die Angabe nennt y_ziel ≈ 28,77 m. Nachgerechnet ergibt y_terrain(1400) = **31,83 m**. Das Programm berechnet den Wert selbst (`engine.TargetY`).
 - **Starthöhe:** Die Angabe nennt keine Starthöhe. Das Gelände liegt bei x = 0 schon auf 20 m, daher startet das Geschoss auf Geländehöhe (y₀ = 20 m).
 - **Wind:** Pro Schuss ist wx konstant, gezogen aus U(−15, +15) m/s.
-- **Treffer:** Die Bisektion bricht bei |x_impact − x_ziel| < 0,01 m ab (gefordert: ±1,5 m).
+- **Treffer:** Die Bisektion bricht bei |x_impact − x_ziel| < 1,5 m ab.
 
 ### Vergleich Euler vs. Heun
 
@@ -143,7 +141,7 @@ Beobachtungen:
 
 1. **Sweep** über α ∈ [10°, 80°] in 0,1°-Schritten mit der Fehlerfunktion `error(α) = x_impact(α) − x_ziel`.
 2. Bei jedem **Vorzeichenwechsel** liegt nach dem Zwischenwertsatz eine Nullstelle im Intervall.
-3. **Bisektion** halbiert das Intervall, bis |error| < 0,01 m (konvergiert garantiert, nach ca. 10 bis 15 Schritten).
+3. **Bisektion** halbiert das Intervall, bis |error| < 1,5 m (konvergiert garantiert, nach ca. 10 bis 15 Schritten).
 
 Es gibt zwei Lösungen: eine **flache** und eine **steile** Bahn, weil die Reichweite bei etwa 40° ein Maximum hat. Das Spiel nutzt die flache Lösung. Heun, dt = 0,01 s:
 
@@ -171,24 +169,7 @@ Zu jedem Schuss wird eine Datei `shot_<n>.csv` mit den Spalten `t,x,y,vx,vy` ges
 
 ---
 
-## 5. Tests
-
-Ausführen mit `dotnet test`.
-
-| Test | Prüft |
-|---|---|
-| `Test_ExplicitEuler_FreeFall_AnalyticComparison` | Euler gegen analytischen freien Fall |
-| `Test_GroundImpact_Interpolation_ProducesExactZeroY` | Bodeninterpolation (y = 0) |
-| `Test_Euler_Convergence_ErrorDecreasesWithHalfStep` | Ordnung 1: Fehler halbiert sich bei dt/2 |
-| `Test_Drag_IsComputedFromVectorMagnitude` | Widerstand antiparallel zu v, Betrag aus beiden Komponenten |
-| `Test_Wind_Sign_HeadwindBrakesMore_TailwindBrakesLess` | Windvorzeichen, v = w ergibt keinen Widerstand |
-| `Test_TerrainInterpolation_FlatTerrain_MatchesGroundInterpolation` | Geländeinterpolation ist konsistent zur Bodeninterpolation |
-| `Test_AngleFinder_HitsTarget_UnderHeadAndTailwind` | Ziel wird bei Gegen-, Rücken- und ohne Wind innerhalb ±1,5 m getroffen |
-| `Test_Heun_IsMoreAccurateThanEuler_AtSameStepSize` | Heun mindestens 10-mal genauer bei gleichem dt |
-
----
-
-## 6. Ausführen
+## 5. Ausführen
 
 ```
 dotnet run --project KinematikEuler
@@ -198,7 +179,7 @@ Menü: `1` = Stufe A, `3` = Track B (Track A ist nicht Teil unserer Abgabe).
 
 ---
 
-## 7. Selbsteinschätzung nach Bewertungsrubrik
+## 6. Selbsteinschätzung nach Bewertungsrubrik
 
 | Kriterium | Umsetzung |
 |---|---|
