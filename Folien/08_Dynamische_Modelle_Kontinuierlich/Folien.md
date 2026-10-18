@@ -479,7 +479,7 @@ $$ y_{k+1} = y_k + h \cdot v_{k+1} $$
 
 ---
 
-### Symplektische Eigenschaft & Phasenraumvolumenerhaltung
+### Symplektische Eigenschaft & Phasenraumvolumenerhaltung *(Deep Dive / Theorie)*
 
 Warum ist Euler-Cromer in der mechatronischen Simulation so populär?
 
@@ -774,7 +774,7 @@ Jeder Block deklariert seine Zustände, Ein- und Ausgänge im Konstruktor.
 
 ---
 
-### Beispiel: `ConstantBlock`
+### Beispiel: `ConstantBlock` *(Deep Dive / Referenz)*
 
 Ein Block, der einen konstanten Wert ausgibt. Er hat keine Zustände und keine Eingänge.
 
@@ -800,7 +800,7 @@ public class ConstantBlock : Block
     }
 
     public override void CalculateOutputs(double time, 
-        double[] cStates, double[] dStates, double[] inputs, double[] outputs)
+        double[] cStates, double[] inputs, double[] outputs)
     {
         outputs[0] = Value;
     }
@@ -835,7 +835,7 @@ Algebraische Blöcke haben keine Zustände. Ihr Ausgang `y` hängt direkt von de
 
 ---
 
-### Beispiel: `GainBlock`
+### Beispiel: `GainBlock` *(Deep Dive / Referenz)*
 
 <div class="columns">
 <div class="two">
@@ -873,7 +873,7 @@ public class GainBlock : Block
 
 ---
 
-### Beispiel: `AddBlock`
+### Beispiel: `AddBlock` *(Deep Dive / Referenz)*
 
 <div class="columns">
 <div class="two">
@@ -934,7 +934,7 @@ Der `IntegrateBlock` ist der entscheidende Baustein zur Modellierung dynamischer
 
 ---
 
-### Beispiel: `IntegrateBlock`
+### Beispiel: `IntegrateBlock` *(Deep Dive / Referenz)*
 
 Der zentrale Block zur Modellierung von Dynamik. Er integriert das Eingangssignal über die Zeit.
 
@@ -959,7 +959,7 @@ public class IntegrateBlock : Block
 
 ---
 
-### `IntegrateBlock`: Implementierung
+### `IntegrateBlock`: Implementierung *(Deep Dive / Referenz)*
 
 <div class="columns">
 <div class="">
@@ -1251,7 +1251,7 @@ Wird das Modell mit dem `EulerExplicitLoopSolver` ausgeführt, kann die algebrai
 
 ---
 
-### Praktische Anwendung: **Nichtlineares elektrisches Netzwerk** (1/2)
+### Praktische Anwendung: **Nichtlineares elektrisches Netzwerk** (1/2) *(Deep Dive)*
 
 **Beispiel: Spannungsteiler mit nichtlinearem Widerstand**
 
@@ -1268,7 +1268,7 @@ Der Ausgang $V_{out}$ hängt direkt von sich selbst ab.
 
 ---
 
-### Praktische Anwendung: **Nichtlineares elektrisches Netzwerk** (2/2)
+### Praktische Anwendung: **Nichtlineares elektrisches Netzwerk** (2/2) *(Deep Dive)*
 
 Die Auflösung der algebraischen Schleife erfordert eine Fixpunktiteration in jedem Zeitschritt:
 
@@ -1282,7 +1282,7 @@ Die Auflösung der algebraischen Schleife erfordert eine Fixpunktiteration in je
 
 ---
 
-### Beispiel: **Diode** als nichtlineares Element (1/2)
+### Beispiel: **Diode** als nichtlineares Element (1/2) *(Deep Dive)*
 
 Ein klassisches Beispiel für ein Bauteil mit nichtlinearer Kennlinie ist die Halbleiterdiode. Ihr Verhalten lässt sich durch die **Shockley-Gleichung** beschreiben.
 
@@ -1302,7 +1302,7 @@ Diese transzendente Gleichung kann nicht analytisch nach $V_{out}$ umgeformt wer
 
 ---
 
-### Beispiel: **Diode** als nichtlineares Element (2/2)
+### Beispiel: **Diode** als nichtlineares Element (2/2) *(Deep Dive)*
 
 **Parameter der Shockley-Gleichung:**
 
@@ -1318,7 +1318,7 @@ Die Auflösung der algebraischen Schleife erfordert in jedem Zeitschritt ein num
 
 ---
 
-### Praktische Anwendung: **Beschleunigung im Fluid** (Added Mass) (1/2)
+### Praktische Anwendung: **Beschleunigung im Fluid** (Added Mass) (1/2) *(Deep Dive)*
 
 **Beispiel: Beschleunigung eines Körpers (z.B. U-Boot) in Wasser**
 
@@ -1335,7 +1335,7 @@ $$ m \cdot a = F_{Antrieb} - c \cdot v^2 - m_{Zusatz} \cdot a $$
 
 ---
 
-### Praktische Anwendung: Beschleunigung im Fluid (2/2)
+### Praktische Anwendung: Beschleunigung im Fluid (2/2) *(Deep Dive)*
 
 Die algebraische Schleife entsteht durch die wechselseitige Abhängigkeit von Kraft und Beschleunigung:
 
@@ -1347,7 +1347,7 @@ Die algebraische Schleife entsteht durch die wechselseitige Abhängigkeit von Kr
 
 ---
 
-### Beschleunigung im Fluid: Blockdiagramm mit Added Mass
+### Beschleunigung im Fluid: Blockdiagramm mit Added Mass *(Deep Dive)*
 
 ![w:1150 center](./Diagramme/Algebraische_Schleife_Mechanik.svg)
 
@@ -1379,7 +1379,7 @@ Implementiert den impliziten Euler-Algorithmus.
 
 ---
 
-### Simulationsschleife in `EulerImplicitSolver`
+### Simulationsschleife in `EulerImplicitSolver` *(Deep Dive / Referenz)*
 
 Der implizite Euler löst in jedem Zeitschritt eine Fixpunktiteration:
 
@@ -1397,13 +1397,13 @@ Der implizite Euler löst in jedem Zeitschritt eine Fixpunktiteration:
 
 ---
 
-### Simulationsschleife in `EulerImplicitSolver` (Ablauf)
+### Simulationsschleife in `EulerImplicitSolver` (Ablauf) *(Deep Dive / Referenz)*
 
 ![w:1180 center](./Diagramme/Simulationsschleife_Implizit.svg)
 
 ---
 
-### Der `EulerImplicitLoopSolver`
+### Der `EulerImplicitLoopSolver` *(Deep Dive / Referenz)*
 
 <div class="columns">
 <div class="two">
@@ -1731,26 +1731,29 @@ public class ClosedLoopMotorBlock : Block
     public double Tm = 0.05, Km = 2.5, UMax = 10.0;
     public double TargetPosition = 1.0; // Sollwert: 1 Radian Sprung
 
-    public ClosedLoopMotorBlock()
+    public ClosedLoopMotorBlock(string name = "DCServo") : base(name)
     {
         // 3 kontinuierliche Zustände: theta, omega, x_I
-        ContinuousStates.AddRange(new[] { 0.0, 0.0, 0.0 });
+        ContinuousStates.Add(new StateDeclaration("Theta"));
+        ContinuousStates.Add(new StateDeclaration("Omega"));
+        ContinuousStates.Add(new StateDeclaration("IntegralError"));
     }
 }
 ```
 
 - Kapselt die Streckenparameter, Reglerverstärkungen und Begrenzungsschranken.
-- Drei Zustandsvariablen werden im gemeinsamen Vektor des Modells registriert.
+- *(Hinweis: In der Laborvorlage `Termin_08` ist diese Block-Schnittstelle noch kompakter als `ISFunction` mit `ComputeDerivatives(double t, double[] x, double[] u)` zusammengefasst).*
 
 ---
 
 ### C#-Implementierung: `ClosedLoopMotorBlock` (Dynamik)
 
 ```csharp
-public override void CalculateDerivatives(double time)
+public override void CalculateDerivatives(
+    double time, double[] cStates, double[] inputs, double[] derivatives)
 {
-    double theta = ContinuousStates[0], omega = ContinuousStates[1];
-    double xI = ContinuousStates[2], error = TargetPosition - theta;
+    double theta = cStates[0], omega = cStates[1];
+    double xI = cStates[2], error = TargetPosition - theta;
     double uRaw = Kp * error + xI - Kd * omega; // D-Anteil auf Istwert
     double uSat = Math.Clamp(uRaw, -UMax, UMax);
 
@@ -1758,9 +1761,9 @@ public override void CalculateDerivatives(double time)
     bool isSat = Math.Abs(uRaw) >= UMax, sameSign = (error * uRaw) > 0.0;
     double dxI = (isSat && sameSign) ? 0.0 : Ki * error;
 
-    Derivatives[0] = omega;
-    Derivatives[1] = (-1.0 / Tm) * omega + (Km / Tm) * uSat;
-    Derivatives[2] = dxI;
+    derivatives[0] = omega;
+    derivatives[1] = (-1.0 / Tm) * omega + (Km / Tm) * uSat;
+    derivatives[2] = dxI;
 }
 ```
 
@@ -1819,10 +1822,10 @@ while (solver.Time <= 0.6) // 600 ms Regelung
 
 **Track A: DC-Servomotor (Industrie)**
 - **Szenario:** Vorschubachse Werkzeugmaschine
-- DGL-System: Strom $i(t)$, Drehzahl $\omega(t)$, Winkel $\theta(t)$
-- 4-stufiger RK4-Solver ($h = 1\,\text{ms}$)
-- Lastsprung bei Fräskontakt ($M_{\text{Last}} = 0{,}5\,\text{Nm}$)
-- Anti-Windup Clamping gegen Überschwingen
+- DGL-System: $i_A(t), \omega(t), \theta(t), x_i(t)$ + Wicklungstemperatur $T_{\text{Cu}}(t)$
+- Verfahrensvergleich: Euler (RK1) vs. Heun (RK2) vs. RK4
+- Lastsprung bei Fräskontakt ($M_{\text{Last}} = 2{,}5\,\text{Nm}$)
+- Anti-Windup Clamping (`PidController`) & thermisches Derating
 
 </div>
 <div class="two">
