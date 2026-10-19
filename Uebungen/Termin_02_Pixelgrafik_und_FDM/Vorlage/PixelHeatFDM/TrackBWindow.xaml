@@ -1,0 +1,167 @@
+﻿<Window x:Class="SandFireFDM.TrackBWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Sand, Lava &amp; Doom Fire – 2D-FDM-Simulator (Stufe B, Track B)"
+        Width="1260" Height="900" MinWidth="960" MinHeight="680"
+        Background="#16161A" Foreground="#E6E6E6"
+        PreviewKeyDown="Window_PreviewKeyDown">
+
+    <Window.Resources>
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#E6E6E6"/>
+        </Style>
+        <Style TargetType="RadioButton">
+            <Setter Property="Foreground" Value="#E6E6E6"/>
+            <Setter Property="Margin" Value="0,2,12,2"/>
+            <Setter Property="Focusable" Value="False"/>
+        </Style>
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#E6E6E6"/>
+            <Setter Property="Focusable" Value="False"/>
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="Margin" Value="0,2,6,2"/>
+            <Setter Property="Padding" Value="8,3"/>
+            <Setter Property="Focusable" Value="False"/>
+        </Style>
+        <Style TargetType="Slider">
+            <Setter Property="Focusable" Value="False"/>
+        </Style>
+        <Style TargetType="GroupBox">
+            <Setter Property="Foreground" Value="#FFB454"/>
+            <Setter Property="BorderBrush" Value="#3A3A44"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+            <Setter Property="Padding" Value="6,4"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="360"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- 200 x 200 WriteableBitmap, 4-fach vergrößert (Nearest Neighbor). Kein Canvas. -->
+        <Viewbox Grid.Column="0" Stretch="Uniform" Margin="10">
+            <Border BorderBrush="#444450" BorderThickness="1" Background="Black">
+                <Image x:Name="WorldImage" Width="800" Height="800" Stretch="Fill"
+                       RenderOptions.BitmapScalingMode="NearestNeighbor"
+                       RenderOptions.EdgeMode="Aliased"
+                       Cursor="Cross"/>
+            </Border>
+        </Viewbox>
+
+        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Margin="0,10,10,10">
+            <StackPanel>
+
+                <GroupBox Header="Werkzeug (linke Maustaste)">
+                    <StackPanel>
+                        <WrapPanel>
+                            <RadioButton x:Name="RbSand" Content="1 Sand" IsChecked="True"/>
+                            <RadioButton x:Name="RbLava" Content="2 Lava"/>
+                            <RadioButton x:Name="RbWood" Content="3 Holz"/>
+                            <RadioButton x:Name="RbEraser" Content="4 Radierer"/>
+                        </WrapPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="80"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="30"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Pinsel" VerticalAlignment="Center"/>
+                            <Slider x:Name="SliderBrush" Grid.Column="1" Minimum="1" Maximum="14" Value="4"
+                                    TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="Param_Changed"/>
+                            <TextBlock x:Name="TxtBrush" Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+                        <TextBlock TextWrapping="Wrap" Foreground="#9A9AA8" FontSize="11" Margin="0,4,0,0"
+                                   Text="Rechte Maustaste: Stein zeichnen · Mittlere Taste oder H gedrückt: Hitzebrenner (1200 °C)"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="Simulation">
+                    <StackPanel>
+                        <WrapPanel>
+                            <Button x:Name="BtnPause" Content="Pause (Leertaste)" Click="BtnPause_Click"/>
+                            <Button x:Name="BtnReset" Content="Reset (R)" Click="BtnReset_Click"/>
+                            <Button x:Name="BtnDemo" Content="Demo-Szene" Click="BtnDemo_Click"/>
+                            <Button x:Name="BtnHotspot" Content="Hotspot 1200 °C" Click="BtnHotspot_Click"/>
+                            <Button x:Name="BtnShot" Content="Screenshot (F12)" Click="BtnShot_Click"/>
+                        </WrapPanel>
+                        <WrapPanel Margin="0,4,0,0">
+                            <TextBlock Text="Ansicht (V):" Margin="0,2,8,0"/>
+                            <RadioButton x:Name="RbViewMaterial" Content="Material + Glut" IsChecked="True" Checked="View_Changed"/>
+                            <RadioButton x:Name="RbViewHeat" Content="Temperaturfeld" Checked="View_Changed"/>
+                        </WrapPanel>
+                        <WrapPanel Margin="0,4,0,0">
+                            <TextBlock Text="Rand:" Margin="0,2,8,0"/>
+                            <RadioButton x:Name="RbDirichlet" Content="Dirichlet 20 °C" IsChecked="True" Checked="Boundary_Checked"/>
+                            <RadioButton x:Name="RbNeumann" Content="Neumann (isoliert)" Checked="Boundary_Checked"/>
+                        </WrapPanel>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="Physik-Parameter (live)">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="92"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="72"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Text="Δt [s]" VerticalAlignment="Center"/>
+                        <Slider x:Name="SliderDt" Grid.Column="1" Minimum="0.005" Maximum="0.2" Value="0.05"
+                                ValueChanged="Param_Changed"/>
+                        <TextBlock x:Name="TxtDt" Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+
+                        <TextBlock Grid.Row="1" Text="a [m²/s]" VerticalAlignment="Center"/>
+                        <Slider x:Name="SliderAlpha" Grid.Row="1" Grid.Column="1" Minimum="0.00001" Maximum="0.0005" Value="0.0001"
+                                ValueChanged="Param_Changed"/>
+                        <TextBlock x:Name="TxtAlpha" Grid.Row="1" Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+
+                        <TextBlock Grid.Row="2" Text="γ Abkühlung [1/s]" VerticalAlignment="Center"/>
+                        <Slider x:Name="SliderGamma" Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="1" Value="0.1"
+                                ValueChanged="Param_Changed"/>
+                        <TextBlock x:Name="TxtGamma" Grid.Row="2" Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+
+                        <TextBlock Grid.Row="3" Text="FDM-Schritte/Frame" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                        <Slider x:Name="SliderSub" Grid.Row="3" Grid.Column="1" Minimum="1" Maximum="4" Value="1"
+                                TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="Param_Changed"/>
+                        <TextBlock x:Name="TxtSub" Grid.Row="3" Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                    </Grid>
+                </GroupBox>
+
+                <GroupBox Header="Stabilität (explizites Euler, 2D)">
+                    <StackPanel>
+                        <Border x:Name="StabilityBadge" CornerRadius="4" Padding="8,6" Background="#1B4D1B">
+                            <StackPanel>
+                                <TextBlock x:Name="TxtStability" FontFamily="Consolas" FontSize="15" FontWeight="Bold"/>
+                                <TextBlock x:Name="TxtStabilityStatus" TextWrapping="Wrap" FontSize="12"/>
+                            </StackPanel>
+                        </Border>
+                        <TextBlock x:Name="TxtCritical" FontFamily="Consolas" Margin="0,4,0,4"/>
+                        <TextBlock Text="Diffusionskoeffizient auf Ziel-s setzen (Δt bleibt):" FontSize="11" Foreground="#9A9AA8"/>
+                        <WrapPanel>
+                            <Button Content="s = 0,20" Tag="0.20" Click="BtnPreset_Click"/>
+                            <Button Content="s = 0,25" Tag="0.25" Click="BtnPreset_Click"/>
+                            <Button Content="s = 0,26" Tag="0.26" Click="BtnPreset_Click"/>
+                            <Button Content="s = 0,30" Tag="0.30" Click="BtnPreset_Click"/>
+                            <Button Content="s = 0,50" Tag="0.50" Click="BtnPreset_Click"/>
+                        </WrapPanel>
+                        <CheckBox x:Name="ChkAutoShot" Content="Auto-Screenshot bei erkannter Instabilität" IsChecked="True" Margin="0,4,0,0"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="Status">
+                    <TextBlock x:Name="TxtStatus" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap"/>
+                </GroupBox>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Window>
