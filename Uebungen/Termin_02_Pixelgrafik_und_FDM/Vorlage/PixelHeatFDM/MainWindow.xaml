@@ -31,10 +31,13 @@
             <!-- Render Display -->
             <Border Grid.Column="0" Background="#111111" CornerRadius="4" BorderBrush="#3F3F46" BorderThickness="1" Margin="0,0,10,0">
                 <Viewbox Stretch="Uniform">
-                    <Image x:Name="HeatImage" 
+                    <Image x:Name="HeatImage"
                            RenderOptions.BitmapScalingMode="NearestNeighbor"
                            Width="256" Height="256"
-                           SnapsToDevicePixels="True"/>
+                           SnapsToDevicePixels="True"
+                           MouseDown="HeatImage_MouseDown"
+                           MouseMove="HeatImage_MouseMove"
+                           MouseUp="HeatImage_MouseUp"/>
                 </Viewbox>
             </Border>
 

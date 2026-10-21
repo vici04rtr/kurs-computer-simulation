@@ -15,6 +15,7 @@ public class BitmapHeatRenderer
     private readonly int _width;
     private readonly int _height;
     private readonly uint[] _pixelBuffer;
+    private readonly uint[] _colorLut = new uint[256];
 
     public WriteableBitmap Bitmap => _bitmap;
 
@@ -24,6 +25,12 @@ public class BitmapHeatRenderer
         _height = height;
         _bitmap = new WriteableBitmap(width, height, 96, 96, PixelFormats.Bgra32, null);
         _pixelBuffer = new uint[width * height];
+
+        for (int i = 0; i < 256; i++)
+        {
+            float normalized = i / 255f;
+            _colorLut[i] = MapTemperatureToColor(normalized, 0f, 1f);
+        }
     }
 
     /// <summary>
@@ -46,7 +53,23 @@ public class BitmapHeatRenderer
             for (int x = 0; x < _width; x++)
             {
                 float t = tData[x, y];
-                _pixelBuffer[index++] = MapTemperatureToColor(t, minTemp, range);
+                if (float.IsNaN(t) || float.IsInfinity(t))
+                {
+                    _pixelBuffer[index++] = 0xFFFF00FFu;
+                }
+                else if (grid.IsInsulator(x, y))
+                {
+                    _pixelBuffer[index++] = 0xFF404040u;
+                }
+                else
+                {
+                    int lutIndex = (int)Math.Clamp(
+                        (t - minTemp) / range * 255f,
+                        0f,
+                        255f);
+
+                    _pixelBuffer[index++] = _colorLut[lutIndex];
+                }
             }
         }
 
