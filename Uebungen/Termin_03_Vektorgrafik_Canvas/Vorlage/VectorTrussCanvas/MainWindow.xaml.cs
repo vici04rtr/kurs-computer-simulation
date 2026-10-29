@@ -259,4 +259,9 @@ public partial class MainWindow : Window
         TxtInfo.Text = "Modell zurückgesetzt.";
         Redraw();
     }
+    private void BtnOpenSketcher_Click(object sender, RoutedEventArgs e)
+    {
+        var sketcherWindow = new BridgeSketcherWindow();
+        sketcherWindow.Show();
+    }
 }

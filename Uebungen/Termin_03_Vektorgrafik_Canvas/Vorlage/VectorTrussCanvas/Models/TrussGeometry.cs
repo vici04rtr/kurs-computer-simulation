@@ -68,10 +68,10 @@ public class TrussGeometry
     public List<TrussLoad> Loads { get; } = new();
 
     // Neue Hilfsmethoden für den Blueprint Sketcher
-    public TrussNode AddNode(string name, double x, double y)
+    public TrussNode AddNode(string name, double x, double y, bool isFixed = false, bool isRoller = false)
     {
         int newId = Nodes.Count > 0 ? Nodes.Max(n => n.Id) + 1 : 1;
-        var node = new TrussNode(newId, name, x, y);
+        var node = new TrussNode(newId, name, x, y, isFixed, isRoller);
         Nodes.Add(node);
         return node;
     }

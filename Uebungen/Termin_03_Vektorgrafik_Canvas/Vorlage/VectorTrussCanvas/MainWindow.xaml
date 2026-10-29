@@ -21,16 +21,17 @@
                 <StackPanel>
                     <TextBlock Text="2D-CAD Fachwerkträger &amp; Responsive Vektorgrafik" 
                                FontSize="16" FontWeight="Bold" Foreground="#FFFFFF"/>
-                    <TextBlock Text="Systemsimulation / Digitaler Zwilling - Fachhochschule Oberösterreich (Campus Wels)" 
+                    <TextBlock Text="Systemsimulation / Digitaler Zwilling - Fachhochschule Oberösterreich" 
                                FontSize="12" Foreground="#AAAAAA" Margin="0,2,0,0"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="Modell:" Foreground="#D4D4D4" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <ComboBox x:Name="CmbModelSelection" Width="190" SelectionChanged="CmbModelSelection_SelectionChanged">
+                    <ComboBox x:Name="CmbModelSelection" Width="170" SelectionChanged="CmbModelSelection_SelectionChanged">
                         <ComboBoxItem Content="Sprint: Dreieck (3 Knoten)" IsSelected="True"/>
                         <ComboBoxItem Content="Track A: Pratt-Träger (8 Knoten)"/>
                     </ComboBox>
                     <Button x:Name="BtnReset" Content="Reset" Click="BtnReset_Click" Margin="8,0,0,0" Padding="12,4"/>
+                    <Button Content="Track B.2 Sketcher öffnen" Click="BtnOpenSketcher_Click" Margin="8,0,0,0" Padding="10,4"/>
                 </StackPanel>
             </Grid>
         </Border>
