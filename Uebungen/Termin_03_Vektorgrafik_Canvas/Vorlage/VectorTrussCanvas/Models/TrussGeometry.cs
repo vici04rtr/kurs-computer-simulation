@@ -67,6 +67,40 @@ public class TrussGeometry
     public List<TrussBar> Bars { get; } = new();
     public List<TrussLoad> Loads { get; } = new();
 
+    // Neue Hilfsmethoden für den Blueprint Sketcher
+    public TrussNode AddNode(string name, double x, double y)
+    {
+        int newId = Nodes.Count > 0 ? Nodes.Max(n => n.Id) + 1 : 1;
+        var node = new TrussNode(newId, name, x, y);
+        Nodes.Add(node);
+        return node;
+    }
+
+    public void AddBar(int nodeAId, int nodeBId)
+    {
+        // Prüfen, ob Stab bereits existiert oder Start == Ende
+        if (nodeAId == nodeBId) return;
+        bool exists = Bars.Any(b => (b.NodeAId == nodeAId && b.NodeBId == nodeBId) ||
+                                    (b.NodeAId == nodeBId && b.NodeBId == nodeAId));
+        if (!exists)
+        {
+            int newId = Bars.Count > 0 ? Bars.Max(b => b.Id) + 1 : 1;
+            Bars.Add(new TrussBar(newId, nodeAId, nodeBId));
+        }
+    }
+
+    public void RemoveNode(int nodeId)
+    {
+        Nodes.RemoveAll(n => n.Id == nodeId);
+        Bars.RemoveAll(b => b.NodeAId == nodeId || b.NodeBId == nodeId);
+        Loads.RemoveAll(l => l.NodeId == nodeId);
+    }
+
+    public void RemoveBar(int barId)
+    {
+        Bars.RemoveAll(b => b.Id == barId);
+    }
+
     /// <summary>
     /// Berechnet die minimale Achsen-parallele BoundingBox aller Knoten [xMin, xMax, yMin, yMax].
     /// </summary>

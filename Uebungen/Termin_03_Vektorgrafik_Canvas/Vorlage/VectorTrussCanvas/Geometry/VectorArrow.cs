@@ -175,6 +175,100 @@ public static class VectorArrow
         canvas.Children.Add(textBlock);
     }
 
+    /// <summary>
+    /// Zeichnet eine vertikale Bemaßungskette nach DIN 406 (Maßhilfslinien, Maßlinie mit Pfeilen, Maßtext).
+    /// </summary>
+    public static void AddVerticalDimensionLine(
+        Canvas canvas,
+        Point pBottom,
+        Point pTop,
+        double xScreen,
+        string dimensionText,
+        Brush? strokeColor = null)
+    {
+        strokeColor ??= Brushes.LightGray;
+
+        // 1. Waagerechte Maßhilfslinien (vom Knoten zur vertikalen Maßlinie)
+        canvas.Children.Add(new Line
+        {
+            X1 = pBottom.X - 4,
+            Y1 = pBottom.Y,
+            X2 = xScreen - 6,
+            Y2 = pBottom.Y,
+            Stroke = strokeColor,
+            StrokeThickness = 1.0,
+            StrokeDashArray = new DoubleCollection { 2, 2 }
+        });
+
+        canvas.Children.Add(new Line
+        {
+            X1 = pTop.X - 4,
+            Y1 = pTop.Y,
+            X2 = xScreen - 6,
+            Y2 = pTop.Y,
+            Stroke = strokeColor,
+            StrokeThickness = 1.0,
+            StrokeDashArray = new DoubleCollection { 2, 2 }
+        });
+
+        // 2. Senkrechte Maßlinie
+        canvas.Children.Add(new Line
+        {
+            X1 = xScreen,
+            Y1 = pBottom.Y,
+            X2 = xScreen,
+            Y2 = pTop.Y,
+            Stroke = strokeColor,
+            StrokeThickness = 1.2
+        });
+
+        // 3. Schlanke Maßpfeile oben und unten
+        double arrowLen = 10.0;
+        double arrowH = 3.0;
+
+        // Pfeil unten (zeigt nach unten zu pBottom)
+        var bottomArrow = new Polygon
+        {
+            Points = new PointCollection
+            {
+                new Point(xScreen, pBottom.Y),
+                new Point(xScreen - arrowH, pBottom.Y - arrowLen),
+                new Point(xScreen + arrowH, pBottom.Y - arrowLen)
+            },
+            Fill = strokeColor
+        };
+        canvas.Children.Add(bottomArrow);
+
+        // Pfeil oben (zeigt nach oben zu pTop)
+        var topArrow = new Polygon
+        {
+            Points = new PointCollection
+            {
+                new Point(xScreen, pTop.Y),
+                new Point(xScreen - arrowH, pTop.Y + arrowLen),
+                new Point(xScreen + arrowH, pTop.Y + arrowLen)
+            },
+            Fill = strokeColor
+        };
+        canvas.Children.Add(topArrow);
+
+        // 4. Zentrierter Maßtext (rotierter Text links der Maßlinie)
+        var textBlock = new TextBlock
+        {
+            Text = dimensionText,
+            Foreground = strokeColor,
+            FontSize = 11,
+            FontWeight = FontWeights.Normal
+        };
+        textBlock.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        double textW = textBlock.DesiredSize.Width;
+
+        Canvas.SetLeft(textBlock, xScreen - textW - 6.0);
+        Canvas.SetTop(textBlock, (pBottom.Y + pTop.Y) / 2.0 - 8.0);
+        canvas.Children.Add(textBlock);
+    }
+    
+
     // =========================================================================
     // TODO: [Stufe A In-Class Sprint]
     // Implementieren Sie analog zu AddHorizontalDimensionLine die Methode:
