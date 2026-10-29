@@ -37,12 +37,12 @@ public partial class BridgeSketcherWindow : Window
         if (_draggedNode == null)
         {
             var (xMin, xMax, yMin, yMax) = _sketchTruss.GetBounds();
-            _transform.MarginX = 60.0;
-            _transform.MarginY = 60.0;
+            _transform.MarginX = 70.0;
+            _transform.MarginY = 70.0;
             _transform.Update(xMin - 2, xMax + 2, yMin - 2, yMax + 2, SketchCanvas.ActualWidth, SketchCanvas.ActualHeight);
         }
 
-        // 1. Stäbe zeichnen
+        // 1. Stäbe zeichnen & Stablängen-Label am Mittelpunkt anzeigen
         foreach (var bar in _sketchTruss.Bars)
         {
             var nodeA = _sketchTruss.Nodes.FirstOrDefault(n => n.Id == bar.NodeAId);
@@ -62,6 +62,23 @@ public partial class BridgeSketcherWindow : Window
                 StrokeThickness = 3.0
             };
             SketchCanvas.Children.Add(line);
+
+            // Euklidische Stablänge berechnen [m]
+            double lengthM = Math.Sqrt(Math.Pow(nodeB.X - nodeA.X, 2) + Math.Pow(nodeB.Y - nodeA.Y, 2));
+            Point pMid = new Point((pA.X + pB.X) / 2.0, (pA.Y + pB.Y) / 2.0);
+
+            var barLabel = new TextBlock
+            {
+                Text = $"{lengthM:F2} m",
+                Foreground = Brushes.Yellow,
+                FontSize = 10,
+                FontWeight = FontWeights.Bold,
+                Background = new SolidColorBrush(Color.FromArgb(160, 20, 20, 20))
+            };
+            barLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            Canvas.SetLeft(barLabel, pMid.X - barLabel.DesiredSize.Width / 2.0);
+            Canvas.SetTop(barLabel, pMid.Y - barLabel.DesiredSize.Height / 2.0);
+            SketchCanvas.Children.Add(barLabel);
         }
 
         // 2. Auflager zeichnen
@@ -82,13 +99,12 @@ public partial class BridgeSketcherWindow : Window
             VectorArrow.AddForceArrow(SketchCanvas, pos, load.Fx, load.Fy, lengthPx: 50.0);
         }
 
-        // 4. Knoten zeichnen (mit Farbcodierung für Mehrfachauswahl)
+        // 4. Knoten zeichnen (mit Farbcodierung für Mehrfachauswahl & Stabverbindung)
         foreach (var node in _sketchTruss.Nodes)
         {
             Point pos = _transform.WorldToScreen(node.X, node.Y);
             double radius = 7.0;
 
-            // Farbcodierung: Ausgewählt = OrangeRed, Start für Stab = Gelb, Normal = Blau
             Brush fillBrush;
             if (_selectedNodes.Contains(node))
                 fillBrush = Brushes.OrangeRed;
@@ -119,6 +135,32 @@ public partial class BridgeSketcherWindow : Window
             Canvas.SetLeft(label, pos.X + 10);
             Canvas.SetTop(label, pos.Y - 14);
             SketchCanvas.Children.Add(label);
+        }
+
+        // 5. DIN 406 Bemaßungsketten (Gesamtlänge & Gesamthöhe), falls Knoten vorhanden sind
+        if (_sketchTruss.Nodes.Count > 0)
+        {
+            var leftNode = _sketchTruss.Nodes.OrderBy(n => n.X).First();
+            var rightNode = _sketchTruss.Nodes.OrderByDescending(n => n.X).First();
+            Point pLeft = _transform.WorldToScreen(leftNode.X, 0.0);
+            Point pRight = _transform.WorldToScreen(rightNode.X, 0.0);
+            double dimY = Math.Max(pLeft.Y, pRight.Y) + 35.0;
+            double totalLength = rightNode.X - leftNode.X;
+
+            VectorArrow.AddHorizontalDimensionLine(
+                SketchCanvas, pLeft, pRight, dimY,
+                $"{totalLength:F2} m");
+
+            var bottomNode = _sketchTruss.Nodes.OrderBy(n => n.Y).First();
+            var topNode = _sketchTruss.Nodes.OrderByDescending(n => n.Y).First();
+            Point pBottom = _transform.WorldToScreen(leftNode.X, bottomNode.Y);
+            Point pTop = _transform.WorldToScreen(leftNode.X, topNode.Y);
+            double dimX = pLeft.X - 35.0;
+            double totalHeight = topNode.Y - bottomNode.Y;
+
+            VectorArrow.AddVerticalDimensionLine(
+                SketchCanvas, pBottom, pTop, dimX,
+                $"{totalHeight:F2} m");
         }
     }
 
