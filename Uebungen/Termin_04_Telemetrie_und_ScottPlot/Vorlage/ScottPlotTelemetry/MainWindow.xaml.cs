@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
+using System.Windows.Controls;
 using ScottPlot;
 using ScottPlot.Plottables;
 using ScottPlotTelemetry.Data;
@@ -24,6 +25,9 @@ public partial class MainWindow : Window
 
     private double _simTime = 0.0;
     private bool _injectAnomalyFlag = false;
+
+    // Merkt sich, ob Stufe A lief, als auf Track B umgeschaltet wurde
+    private bool _stageAWasRunning = true;
 
     // Vorallokiertes Array für das gleitende Fenster (0 Byte GC-Allokation im Loop)
     private readonly double[] _windowCopy = new double[BufferCapacity];
@@ -223,5 +227,28 @@ public partial class MainWindow : Window
     private void BtnInjectAnomaly_Click(object sender, RoutedEventArgs e)
     {
         _injectAnomalyFlag = true;
+    }
+
+    private void CmbView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        // Das Event feuert schon während InitializeComponent() → dann nichts tun
+        if (!IsLoaded || StageAHost is null || RacingView is null) return;
+
+        bool trackB = CmbView.SelectedIndex == 1;
+
+        StageAHost.Visibility = trackB ? Visibility.Collapsed : Visibility.Visible;
+        RacingView.Visibility = trackB ? Visibility.Visible : Visibility.Collapsed;
+
+        if (trackB)
+        {
+            // Stufe-A-Timer anhalten; Track B startet sich selbst (IsVisibleChanged)
+            _stageAWasRunning = _timer.IsEnabled;
+            _timer.Stop();
+        }
+        else if (_stageAWasRunning)
+        {
+            // Nur fortsetzen, wenn Stufe A vorher nicht manuell pausiert war
+            _timer.Start();
+        }
     }
 }
