@@ -16,9 +16,9 @@ internal class Program
         Console.WriteLine("===============================================================\n");
 
         Console.WriteLine("Wählen Sie einen Modus:");
-        Console.WriteLine("  1: Stufe A (In-Class Sprint: Schiefer Wurf im Vakuum)");
-        Console.WriteLine("  2: Stufe B (Track A: Hydraulikzylinder-Endlagendämpfung)");
-        Console.WriteLine("  3: Stufe B (Track B: Artillery Duel mit Wind & Drag)");
+        Console.WriteLine("  1: Stufe 1 (Basisaufgabe: Schiefer Wurf im Vakuum)");
+        Console.WriteLine("  2: Stufe 2 (Track A: Hydraulikzylinder-Endlagendämpfung)");
+        Console.WriteLine("  3: Stufe 2 (Track B: Artillery Duel mit Wind & Drag)");
         Console.Write("Auswahl [Standard: 1]: ");
 
         string? input = Console.ReadLine();
@@ -33,18 +33,18 @@ internal class Program
                 RunTrackB_ArtilleryGame();
                 break;
             default:
-                RunSprint_BallisticTrajectory();
+                RunStage1_BallisticTrajectory();
                 break;
         }
     }
 
     /// <summary>
-    /// Stufe A: In-Class Sprint - Schiefer Wurf im Vakuum.
+    /// Stufe 1: Basisaufgabe - Schiefer Wurf im Vakuum.
     /// Vergleich des expliziten Euler-Verfahrens mit der geschlossenen analytischen Lösung.
     /// </summary>
-    public static void RunSprint_BallisticTrajectory()
+    public static void RunStage1_BallisticTrajectory()
     {
-        Console.WriteLine("\n--- [Stufe A Sprint] Schiefer Wurf im Vakuum ---");
+        Console.WriteLine("\n--- [Stufe 1 Basisaufgabe] Schiefer Wurf im Vakuum ---");
 
         // Physikalische Randbedingungen:
         double v0 = 150.0;             // Abgangsgeschwindigkeit [m/s]
@@ -113,16 +113,17 @@ internal class Program
     }
 
     /// <summary>
-    /// Stufe B: Track A - Hydraulikzylinder-Endlagendämpfung (Gerüst).
+    /// Stufe 2: Track A - Hydraulikzylinder-Endlagendämpfung (Gerüst).
     /// </summary>
     private static void RunTrackA_HydraulicCylinder()
     {
-        Console.WriteLine("\n--- [Stufe B Track A] Hydraulikzylinder-Endlagendämpfung ---");
-        Console.WriteLine("// TODO: [Stufe B Track A] Implementieren Sie:");
+        Console.WriteLine("\n--- [Stufe 2 Track A] Hydraulikzylinder-Endlagendämpfung ---");
+        Console.WriteLine("// TODO: [Stufe 2 Track A] Implementieren Sie:");
         Console.WriteLine("   1. HydraulicCylinderModel mit Kraft F_vor = 60 kN und Blendenreibung.");
         Console.WriteLine("   2. Vergleich Euler vs. Heun (RK2) bei dt in {10µs, 100µs, 500µs, 2ms}.");
         Console.WriteLine("   3. CSV-Export nach simulation_cylinder.csv.");
     }
+
 
     /// <summary>Stufe B: Track B - Retro Artillery Duel mit Newton-Drag & Wind.</summary>
     private static void RunTrackB_ArtilleryGame()

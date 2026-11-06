@@ -24,14 +24,14 @@ Dieses Kapitel umfasst die folgenden Abschnitte:
 
 ---
 
-### Showcase & Peer-Challenge: Termin 04
+### Live-Showcase & Code-Defense: Termin 04
 
-Präsentation der Ergebnisse aus Termin 04 ([Aufgabenblatt 04](../../Uebungen/Termin_04_Telemetrie_und_ScottPlot/Aufgabenblatt.md)):
+Präsentation der Hausübung aus Termin 04 (**Stufe 1: Basisaufgabe** + **Stufe 2: Track A oder B**, [Aufgabenblatt 04](../../Uebungen/Termin_04_Telemetrie_und_ScottPlot/Aufgabenblatt.md)):
 
 <div class="columns">
 <div class="two">
 
-#### Track A: Industrie (Antriebsprüfstand)
+#### Stufe 2 – Track A: Industrie (Antriebsprüfstand)
 - **Signal-Streaming:** Drehzahl $n(t)$ & Moment $M(t)$ mit dynamischen $\pm 3\sigma$-Toleranzbändern.
 - **Topologie:** MSAGL-Antriebsstrang mit visueller Kavitations-/Alarmanzeige.
 - **Stresstest:** Abtastfrequenz drastisch erhöhen & Welford-Hüllkurven im Betrieb prüfen.
@@ -39,7 +39,7 @@ Präsentation der Ergebnisse aus Termin 04 ([Aufgabenblatt 04](../../Uebungen/Te
 </div>
 <div class="two">
 
-#### Track B: Game (Racing HUD)
+#### Stufe 2 – Track B: Game (Racing HUD)
 - **Cockpit-Telemetrie:** Speed/RPM mit Shift-Flash & G-Kräfte (Kamm'scher Kreis).
 - **Statistik:** Rundenzeiten-Histogramm & Streckenabschnitts-Topologie (MSAGL).
 - **Stresstest:** Grenzbereich-Fahrt mit Haftungsabriss ($a_{\text{res}} > \mu \cdot g$) provozieren.
@@ -47,7 +47,7 @@ Präsentation der Ergebnisse aus Termin 04 ([Aufgabenblatt 04](../../Uebungen/Te
 </div>
 </div>
 
-> **Peer-Challenge (Säule 2b):** Prüfung auf allokationsfreies Streaming (keine GC-Spikes im Diagnostic Tool), Single-Pass-Welford und UI-Entkopplung.
+> **Code-Defense (Säule 2b, 20 %):** Prüfung auf allokationsfreies Streaming (keine GC-Spikes im Diagnostic Tool), Single-Pass-Welford und UI-Entkopplung.
 
 ---
 
@@ -55,11 +55,26 @@ Präsentation der Ergebnisse aus Termin 04 ([Aufgabenblatt 04](../../Uebungen/Te
 
 Dieser Abschnitt umfasst die folgenden Inhalte:
 
+- Brücke zu Termin 02–04 und Abschluss des Visualisierungs-Blocks
 - Grundkonzepte von OpenGL (Zustandsmaschine, Grafik-Pipeline)
 - Verwendung von Buffern (Color, Depth)
 - Koordinatensysteme und Transformationen (Projection, ModelView)
 - Projektionsarten (glOrtho vs. gluPerspective, Clipping-Ebenen)
 - Zeichnen von Primitiven und Beleuchtung
+
+---
+
+### Rückblick & Brücke: Wo stehen wir in der Vorlesung?
+
+In **Termin 02 bis 04** haben wir die 2D-Welt gemeistert (Pixelraster, 2D-Vektor-Canvas, Echtzeit-Diagramme mit `ScottPlot 5`) – wo stoßen 2D-Ansichten an ihre Grenzen?
+
+- **Rückblick auf Termin 03 & 04 (2D-Projektion & Telemetrie):**
+  - In Termin 03 haben wir Weltkoordinaten $(x_w, y_w)$ auf den flachen Bildschirm abgebildet; in Termin 04 haben wir Zeitreihen und Topologie-Graphen (`MSAGL`) ergänzt.
+- **Der Engpass heute (Räumliche Kinematik & Verdeckung):**
+  - Ein mehrachsiger Industrieroboter (SCARA / Knickarm) oder ein Greifautomat bewegt sich im **dreidimensionalen Raum $(x, y, z)$**: Bauteile verdecken sich gegenseitig, Perspektive verkürzt Längen und Gelenke rotieren um beliebige Raumachsen.
+  - Eine flache 2D-Zeichenfläche kennt weder Tiefenprüfung (**Z-Buffer**) noch Hardware-Beleuchtung oder hierarchische $4\times 4$-Transformationsketten auf der GPU.
+- **Einordnung ins große Ganze (4. Visualisierungs-Säule: 3D-OpenGL):**
+  - Mit `SharpGL` und hierarchischen **3D-Szenengraphen** komplettieren wir heute unseren Visualisierungs-Werkzeugkasten (T02–T05).
 
 ---
 
@@ -151,7 +166,7 @@ gl.ClearColor(0.1f, 0.2f, 0.3f, 1.0f);
 </div>
 <div>
 
-![w:500](./Illustrationen/RGB_Cube.png)
+![](./Illustrationen/RGB_Cube.png)
 
 </div>
 </div>
@@ -179,7 +194,7 @@ gl.Enable(OpenGL.GL_LIGHTING);
 </div>
 <div>
 
-![w:500](./Illustrationen/OpenGL_Pipeline_Image77.gif)
+![](./Illustrationen/OpenGL_Pipeline_Image77.gif)
 
 </div>
 </div>
@@ -204,7 +219,7 @@ Jede dieser Komponenten wird für jede Lichtquelle berechnet und aufsummiert.
 </div>
 <div>
 
-![w:500](./Diagramme/Phong%20-%20Gesamt.svg)
+![](./Diagramme/Phong%20-%20Gesamt.svg)
 
 </div>
 </div>
@@ -262,7 +277,7 @@ Für jeden Oberflächenpunkt $\vec{p}$ erfordert das Phong-Modell vier **Einheit
 </div>
 <div class="one">
 
-![w:380](./Diagramme/Phong%20-%20Vektoren.svg)
+![](./Diagramme/Phong%20-%20Vektoren.svg)
 
 </div>
 </div>
@@ -286,7 +301,7 @@ $$I_a = k_a \cdot I_{La}$$
 </div>
 <div>
 
-![w:500](./Diagramme/Phong%20-%20Vektoren.svg)
+![](./Diagramme/Phong%20-%20Vektoren.svg)
 
 </div>
 </div>
@@ -310,7 +325,7 @@ $$I_d = k_d \cdot I_{Ld} \cdot \max(0, \vec{n} \cdot \vec{l})$$
 </div>
 <div>
 
-![w:500](./Diagramme/Phong%20-%20Diffuse.svg)
+![](./Diagramme/Phong%20-%20Diffuse.svg)
 
 </div>
 </div>
@@ -334,7 +349,7 @@ $$I_s = k_s \cdot I_{Ls} \cdot \left(\max(0, \vec{r} \cdot \vec{v})\right)^{\alp
 </div>
 <div>
 
-![w:500](./Diagramme/Phong%20-%20Specular.svg)
+![](./Diagramme/Phong%20-%20Specular.svg)
 
 </div>
 </div>
@@ -359,7 +374,7 @@ In klassischem OpenGL wird diese Berechnung für bis zu 8 Lichtquellen (`GL_LIGH
 </div>
 <div>
 
-![w:500](./Diagramme/Phong%20-%20Kombiniert.svg)
+![](./Diagramme/Phong%20-%20Kombiniert.svg)
 
 </div>
 </div>
@@ -385,7 +400,7 @@ gl.ShadeModel(OpenGL.GL_SMOOTH);
 </div>
 <div>
 
-![w:500](./Illustrationen/OpenGL_Normalen.png)
+![](./Illustrationen/OpenGL_Normalen.png)
 
 </div>
 </div>
@@ -405,7 +420,7 @@ gl.ShadeModel(OpenGL.GL_SMOOTH);
 </div>
 <div>
 
-![w:500](./Diagramme/ShadeModel_Flat.svg)
+![](./Diagramme/ShadeModel_Flat.svg)
 
 </div>
 </div>
@@ -425,7 +440,7 @@ gl.ShadeModel(OpenGL.GL_SMOOTH);
 </div>
 <div>
 
-![w:500](./Diagramme/ShadeModel_Smooth.svg)
+![](./Diagramme/ShadeModel_Smooth.svg)
 
 </div>
 </div>
@@ -449,7 +464,7 @@ gl.Enable(OpenGL.GL_DEPTH_TEST);
 </div>
 <div>
 
-![h:440px](./Illustrationen/OpenGL_Light_Components.png)
+![](./Illustrationen/OpenGL_Light_Components.png)
 
 </div>
 </div>
@@ -517,7 +532,7 @@ gl.End();
 </div>
 <div>
 
-![w:500](./Screenshots/OpenGL_Primitives_Points.png)
+![](./Screenshots/OpenGL_Primitives_Points.png)
 
 </div>
 </div>
@@ -545,7 +560,7 @@ gl.End();
 </div>
 <div>
 
-![w:500](./Screenshots/OpenGL_Primitives_Lines.png)
+![](./Screenshots/OpenGL_Primitives_Lines.png)
 
 </div>
 </div>
@@ -576,7 +591,7 @@ gl.End();
 </div>
 <div>
 
-![w:500](./Screenshots/OpenGL_Primitives_Triangles.png)
+![](./Screenshots/OpenGL_Primitives_Triangles.png)
 
 </div>
 </div>
@@ -602,7 +617,7 @@ gl.End();
 </div>
 <div>
 
-![w:500](./Screenshots/OpenGL_Primitives_TriangleStrip.png)
+![](./Screenshots/OpenGL_Primitives_TriangleStrip.png)
 
 </div>
 </div>
@@ -627,7 +642,7 @@ gl.End();
 </div>
 <div>
 
-![w:500](./Screenshots/OpenGL_Primitives_Quads.png)
+![](./Screenshots/OpenGL_Primitives_Quads.png)
 
 </div>
 </div>
@@ -695,7 +710,7 @@ $$\vec{v}_{\text{world}} = M_{\text{model}} \cdot \vec{v}_{\text{obj}} \quad \lo
 
 Die Wahl der Projektionsmatrix bestimmt die geometrische Form des Sichtvolumens (View Volume) und den Strahlengang:
 
-![width:1080px](./Diagramme/Projektionsarten.svg)
+![](./Diagramme/Projektionsarten.svg)
 
 ---
 
@@ -867,7 +882,7 @@ Die objektorientierte Architektur des Szenengraphen gliedert sich in folgende Ro
 
 ### Klassendiagramm: Szenengraph-Architektur
 
-![w:1150 center UML-Diagramm des Szenengraphen](../../Quellen/WS25/VorlageSzenengraph3D/Model.Scene.svg)
+![UML-Diagramm des Szenengraphen](../../Quellen/WS25/VorlageSzenengraph3D/Model.Scene.svg)
 
 ---
 
@@ -1089,7 +1104,7 @@ Zeichnet einen Würfel oder Quader.
 </div>
 <div>
 
-![w:500](./Illustrationen/Geometry_Triangles.png)
+![](./Illustrationen/Geometry_Triangles.png)
 
 </div>
 </div>
@@ -1100,7 +1115,7 @@ Zeichnet einen Würfel oder Quader.
 
 Der folgende *Screenshot* zeigt Würfeldarstellungen mit unterschiedlichen Eigenschaften:
 
-![w:1100px](../../Quellen/WS25/BeispielWürfel3D/Screenshot.png)
+![](../../Quellen/WS25/BeispielWürfel3D/Screenshot.png)
 
 ---
 
@@ -1122,7 +1137,7 @@ Approximiert eine Kugeloberfläche über ein Gitternetz aus Längen- und Breiten
 </div>
 <div>
 
-![h:440px](./Illustrationen/Sphere_Slices_Stacks.png)
+![](./Illustrationen/Sphere_Slices_Stacks.png)
 
 </div>
 </div>
@@ -1133,7 +1148,7 @@ Approximiert eine Kugeloberfläche über ein Gitternetz aus Längen- und Breiten
 
 Der folgende *Screenshot* zeigt Kugeldarstellungen mit unterschiedlichen Einstellungen:
 
-![h:330px center](../../Quellen/WS25/BeispielKugel3D/Screenshot.png)
+![](../../Quellen/WS25/BeispielKugel3D/Screenshot.png)
 
 > [!NOTE]
 > Die ausführliche mathematische Herleitung der Kugelkoordinaten sowie die C#-Triangulationsschleifen (`GL_QUAD_STRIP` und `GL_TRIANGLE_FAN`) sind im Begleitdokument [Folien_Anhang_3D_Normalen.md](./Folien_Anhang_3D_Normalen.md) dokumentiert.
@@ -1157,7 +1172,7 @@ Modelliert einen Kreiszylinder, Kegel oder Kegelstumpf entlang der Y-Achse:
 </div>
 <div>
 
-![w:500](./Illustrationen/Cylinder_Slices.png)
+![](./Illustrationen/Cylinder_Slices.png)
 
 </div>
 </div>
@@ -1168,7 +1183,7 @@ Modelliert einen Kreiszylinder, Kegel oder Kegelstumpf entlang der Y-Achse:
 
 Der folgende *Screenshot* zeigt Zylinderdarstellungen mit unterschiedlichen Einstellungen:
 
-![h:380px center](../../Quellen/WS25/BeispielZylinder3D/Screenshot.png)
+![](../../Quellen/WS25/BeispielZylinder3D/Screenshot.png)
 
 > [!NOTE]
 > Die analytische 2D-Querschnitts- und 3D-Rotationsherleitung der Zylinder- und Kegelnormalen sowie deren C#-Berechnung finden Sie im Anhangsdokument [Folien_Anhang_3D_Normalen.md](./Folien_Anhang_3D_Normalen.md).
@@ -1243,7 +1258,7 @@ In der Robotik und Mechatronik (z.B. KUKA, ABB, Fanuc, TwinCAT Kinematics) beste
 
 ### Szenengraph einer Roboter-Kinematik
 
-![w:1150 center](./Diagramme/Szenengraph_Roboterarm.svg)
+![](./Diagramme/Szenengraph_Roboterarm.svg)
 
 ---
 
@@ -1541,16 +1556,15 @@ private void OnMouseMove(object sender, MouseEventArgs e)
 
 ---
 
-### Laborübung Termin 05: 3D-OpenGL & Szenengraph
+### Hausübung Termin 05: 3D-OpenGL & Szenengraph
 
-In-Class Sprint (Stufe A) & Hausübung (Stufe B, 10 Pkt.) – Details: [Aufgabenblatt 05](../../Uebungen/Termin_05_3D_OpenGL_Szenengraph/Aufgabenblatt.md):
+**Stufe 1 (Basisaufgabe `1.1`–`1.3` für alle Teams auf `SceneGraph3D.sln`):** `_rootNode.Render`, Kamera-Panning & 3D-Werkstück ([Aufgabenblatt 05](../../Uebungen/Termin_05_3D_OpenGL_Szenengraph/Aufgabenblatt.md)) $\to$ **Stufe 2 (Vertiefung – Wahl: Track A ODER Track B, 10 Pkt.):**
 
 <div class="columns">
 <div class="two">
 
-#### Track A: Industrie & Mechatronik
-**4-Achs-SCARA mit Parallelgreifer & Teach-In**
-- Ausbau auf 4 Achsen: $\theta_1, \theta_2, d_3$ + Handgelenk $\theta_4$ & 2-Backen-Parallelgreifer ($g_{\text{width}}$)
+#### Stufe 2 – Track A: 4-Achs-SCARA mit Parallelgreifer
+- Ausbau auf 4 Achsen: $\theta_1, \theta_2, d_3$ + Handgelenk $\theta_4$ & Parallelgreifer ($g_{\text{width}}$)
 - Einheitliches Szenengraph-Rendering (`_rootNode.Render`)
 - Animiertes Teach-In (`DispatcherTimer`) zwischen Pose A, Pose B & Home
 - Interaktives Pick-and-Place von 3D-Werkstücken
@@ -1558,16 +1572,12 @@ In-Class Sprint (Stufe A) & Hausübung (Stufe B, 10 Pkt.) – Details: [Aufgaben
 </div>
 <div class="two">
 
-#### Track B: Simulation Game
-**3D Arcade Claw Crane (Greifarm)**
+#### Stufe 2 – Track B: 3D Arcade Claw Crane (Greifarm)
 - 3D-Gehäuse mit Preisen & Auswurfschacht
-- 3-Achs-Portalbrücke & Seilwinde
+- 3-Achs-Portalbrücke & Seilwinde im Szenengraphen
 - Schließender 3-Finger-Greifmechanismus
-- Tastatursteuerung & 3D-Kollisionsprüfung
-- Physikalisches Greifen und Ablegen
+- Tastatursteuerung, 3D-Kollisionsprüfung & physikalisches Ablegen
 
 </div>
 </div>
-
-> Flüssiges 3D-Rendering mit SharpGL & OrbitCamera ($\ge 30\,\text{FPS}$) – Wahlmodell: Track A oder B.
 

@@ -25,14 +25,14 @@ Dieses Kapitel umfasst die folgenden Abschnitte:
 
 ---
 
-### Showcase & Peer-Challenge: Termin 01
+### Live-Showcase & Code-Defense: Termin 01
 
-Präsentation der Ergebnisse aus Termin 01 ([Aufgabenblatt 01](../../Uebungen/Termin_01_Kinematik_und_Euler/Aufgabenblatt.md)):
+Präsentation der Hausübung aus Termin 01 (**Stufe 1: Basisaufgabe** + **Stufe 2: Track A oder B**, [Aufgabenblatt 01](../../Uebungen/Termin_01_Kinematik_und_Euler/Aufgabenblatt.md)):
 
 <div class="columns">
 <div class="two">
 
-#### Track A: Industrie (Hydraulikzylinder)
+#### Stufe 2 – Track A: Industrie (Hydraulikzylinder)
 - **Modell:** Viskose vs. quadratische Blendenreibung, harter Anschlag mit Federkraft.
 - **Numerik:** Euler vs. Heun (RK2). Ab welcher Schrittweite $\Delta t$ explodiert Euler?
 - **Stresstest:** $\Delta t$ live verzehnfachen.
@@ -40,7 +40,7 @@ Präsentation der Ergebnisse aus Termin 01 ([Aufgabenblatt 01](../../Uebungen/Te
 </div>
 <div class="two">
 
-#### Track B: Game (Artillery Duel)
+#### Stufe 2 – Track B: Game (Artillery Duel)
 - **Modell:** Ballistik mit quadratischem Newton-Drag, stochastischem Wind & Terrain.
 - **Numerik:** Schnittpunkt-Interpolation bei Kollision, KI-Winkelsuche ($\pm 1{,}5\,\text{m}$).
 - **Stresstest:** Gegenwind live auf $+25\,\text{m/s}$ setzen.
@@ -48,7 +48,7 @@ Präsentation der Ergebnisse aus Termin 01 ([Aufgabenblatt 01](../../Uebungen/Te
 </div>
 </div>
 
-> **Peer-Challenge (Säule 2b):** Fragen aus dem Plenum zu Stabilitätsgrenzen, Energieerhaltung und linearer Schnittpunkt-Interpolation.
+> **Code-Defense (Säule 2b, 20 %):** Prüfung auf Stabilitätsgrenzen, Energieerhaltung und lineare Schnittpunkt-Interpolation.
 
 ---
 
@@ -58,10 +58,25 @@ Präsentation der Ergebnisse aus Termin 01 ([Aufgabenblatt 01](../../Uebungen/Te
 
 Dieser Abschnitt umfasst die folgenden Inhalte:
 
+- Brücke zu Termin 01 (1D-Kinematik) und Auftakt des Visualisierungs-Blocks
 - Diskrete Rasterbilder und 2D-Feldsimulationen
 - Farbmodelle, Bytereihenfolge und Farbtiefe (`Bgra32`)
 - Zeilenweiser linearer Speicher (Row-Major) und `Stride`
 - Mathematische Adressberechnung und Cache-Lokalität
+
+---
+
+### Rückblick & Brücke: Wo stehen wir in der Vorlesung?
+
+In **Termin 01** haben wir punktförmige Massen (Zylinderkolben, Projektil) mit wenigen skalaren Zustandsgrößen ($x(t), v(t)$) berechnet – warum reicht das für reale Bauteile oft nicht aus?
+
+- **Rückblick auf Termin 01 (Konzentrierte Parameter):**
+  - Ein einzelner Zahlenwert für Position $x$ oder Temperatur $T$ genügt, solange sich das Bauteil überall gleich verhält.
+- **Der Engpass heute (Ortsaufgelöste 2D-Felder):**
+  - In einem CPU-Kühlkörper oder Reaktor hat **jeder Punkt $(x, y)$ im Raum** eine andere Temperatur $T(x, y, t)$! Bei einem $500 \times 500$-Gitter entstehen **$250.000$ gekoppelte Zustände pro Zeitschritt**.
+  - Klassische Textausgaben oder Standard-UI-Controls brechen bei $250.000$ Werten mit 60 FPS sofort zusammen.
+- **Einordnung ins große Ganze (1. Visualisierungs-Säule: Raw Pixels):**
+  - Wir starten heute den Block **2D/3D-Visualisierung (T02–T05)** auf der hardwarenächsten Ebene: Direkter Speicherzugriff auf 32-Bit-Pixelraster (`WriteableBitmap`) für flächige 2D-Feldsimulationen (Finite Differenzen).
 
 ---
 
@@ -113,7 +128,7 @@ In modernen Grafiktreibern ist das **32-Bit BGRA-Format** der Standard für maxi
 </div>
 <div class="one">
 
-![h:400](./Diagramme/Mini_Bgra32_Bitshift.svg)
+![](./Diagramme/Mini_Bgra32_Bitshift.svg)
 
 </div>
 </div>
@@ -136,14 +151,14 @@ Ein 2D-Rasterbild existiert im Arbeitsspeicher als **kontinuierlicher 1D-Byte-Bl
 </div>
 <div class="one">
 
-![h:400](./Diagramme/Mini_Stride_Padding.svg)
+![](./Diagramme/Mini_Stride_Padding.svg)
 
 </div>
 </div>
 
 ---
 
-![center w:1080](./Diagramme/Speicherlayout_Stride.svg)
+![](./Diagramme/Speicherlayout_Stride.svg)
 
 ---
 
@@ -165,7 +180,7 @@ Für ein Pixel an Koordinate $(x, y)$ errechnet sich die absolute Position im Pu
 </div>
 <div class="one">
 
-![h:400](./Diagramme/Mini_Cache_Lokalitaet.svg)
+![](./Diagramme/Mini_Cache_Lokalitaet.svg)
 
 </div>
 </div>
@@ -233,7 +248,7 @@ Kombiniert mit einer einzigen
 </div>
 <div class="one">
 
-![h:400](./Diagramme/Mini_WriteableBitmap_Puffer.svg)
+![](./Diagramme/Mini_WriteableBitmap_Puffer.svg)
 
 </div>
 </div>
@@ -445,7 +460,7 @@ In der physikalischen Simulation repräsentiert ein Pixel eine Messgröße $v$ (
 </div>
 <div class="one">
 
-![h:400](./Diagramme/Mini_Farbskalen_Vergleich.svg)
+![](./Diagramme/Mini_Farbskalen_Vergleich.svg)
 
 </div>
 </div>
@@ -465,7 +480,7 @@ In der physikalischen Simulation repräsentiert ein Pixel eine Messgröße $v$ (
 </div>
 <div class="one">
 
-![h:410](./Diagramme/LUT_Farbskala_Prinzip.svg)
+![](./Diagramme/LUT_Farbskala_Prinzip.svg)
 
 </div>
 </div>
@@ -544,7 +559,7 @@ Wärmeleitung funktioniert nach **demselben Prinzip** wie ein elektrisches RC-Ne
 
 ---
 
-![center w:1080](./Diagramme/Thermo_Grundbegriffe_Analogie.svg)
+![](./Diagramme/Thermo_Grundbegriffe_Analogie.svg)
 
 ---
 
@@ -565,7 +580,7 @@ Warum fühlt sich Kupfer sofort heiß an, während sich Paste langsam erwärmt? 
 </div>
 <div class="one">
 
-![h:400](./Diagramme/Mini_Lambda_Autobahn.svg)
+![](./Diagramme/Mini_Lambda_Autobahn.svg)
 
 </div>
 </div>
@@ -588,7 +603,7 @@ Der zweite Faktor ist die **thermische Trägheit** des Materials (*„Wie groß 
 </div>
 <div class="one">
 
-![h:400](./Diagramme/Mini_Kapazitaet_Waermetank.svg)
+![](./Diagramme/Mini_Kapazitaet_Waermetank.svg)
 
 </div>
 </div>
@@ -611,14 +626,14 @@ $$\alpha = \frac{\lambda}{\rho \cdot c_p} = \frac{\text{Leitvermögen (Transport
 </div>
 <div class="one">
 
-![h:400](./Diagramme/Mini_Alpha_Welle.svg)
+![](./Diagramme/Mini_Alpha_Welle.svg)
 
 </div>
 </div>
 
 ---
 
-![center w:1080](./Diagramme/Thermo_Materialparameter_Alpha.svg)
+![](./Diagramme/Thermo_Materialparameter_Alpha.svg)
 
 ---
 
@@ -639,7 +654,7 @@ Betrachten wir zwei benachbarte Gitterpunkte $i$ (links, Position $x$) und $i+1$
 </div>
 <div class="one">
 
-![h:400](./Diagramme/Mini_Fourier_3Faktoren.svg)
+![](./Diagramme/Mini_Fourier_3Faktoren.svg)
 
 </div>
 </div>
@@ -662,14 +677,14 @@ $$\dot{q}_x = -\lambda \cdot \frac{\partial T}{\partial x} \approx -\lambda \cdo
 </div>
 <div class="one">
 
-![h:400](./Diagramme/Mini_Fourier_Vorzeichen.svg)
+![](./Diagramme/Mini_Fourier_Vorzeichen.svg)
 
 </div>
 </div>
 
 ---
 
-![center w:1080](./Diagramme/Thermo_Fourier_Gesetz.svg)
+![](./Diagramme/Thermo_Fourier_Gesetz.svg)
 
 ---
 
@@ -688,7 +703,7 @@ $$\dot{q}_{\text{links}\to i} = \lambda \cdot \frac{T_{i-1} - T_i}{\Delta x}, \q
 </div>
 <div class="one">
 
-![h:400](./Diagramme/Mini_Zellbilanz_Zufluss.svg)
+![](./Diagramme/Mini_Zellbilanz_Zufluss.svg)
 
 </div>
 </div>
@@ -723,14 +738,14 @@ Was bedeutet das Vorzeichen der Krümmung $\frac{\partial^2 T}{\partial x^2} \ap
 </div>
 <div class="one">
 
-![h:400](./Diagramme/Mini_Kruemmung_3Faelle.svg)
+![](./Diagramme/Mini_Kruemmung_3Faelle.svg)
 
 </div>
 </div>
 
 ---
 
-![center w:1080](./Diagramme/Thermo_Energiebilanz_Kruemmung.svg)
+![](./Diagramme/Thermo_Energiebilanz_Kruemmung.svg)
 
 ---
 
@@ -787,7 +802,7 @@ Auf einem quadratischen Pixelgitter ($\Delta x = \Delta y$) addieren wir die 1D-
 </div>
 <div class="two">
 
-![w:390](./Diagramme/FDM_5_Punkt_Stern.svg)
+![](./Diagramme/FDM_5_Punkt_Stern.svg)
 
 </div>
 </div>
@@ -810,7 +825,7 @@ $$L_{i,j}^n = 4 \cdot \left( \underbrace{\frac{T_{i+1,j}^n + T_{i-1,j}^n + T_{i,
 </div>
 <div class="one">
 
-![h:400](./Diagramme/Mini_Nachbar_Waage.svg)
+![](./Diagramme/Mini_Nachbar_Waage.svg)
 
 </div>
 </div>
@@ -833,7 +848,7 @@ Wie wird aus der 2D-DGL die Update-Formel für den nächsten Zeitschritt $t_{n+1
 </div>
 <div class="one">
 
-![h:400](./Diagramme/Mini_Euler_Zeitschritt.svg)
+![](./Diagramme/Mini_Euler_Zeitschritt.svg)
 
 </div>
 </div>
@@ -858,7 +873,7 @@ Der Parameter $s = \frac{\alpha \cdot \Delta t}{\Delta x^2}$ heißt **dimensions
 </div>
 <div class="one">
 
-![h:400](./Diagramme/Mini_Diffusionszahl_Flaeche.svg)
+![](./Diagramme/Mini_Diffusionszahl_Flaeche.svg)
 
 </div>
 </div>
@@ -881,7 +896,7 @@ $$\boxed{T_{i,j}^{n+1} = \underbrace{(1 - 4s)}_{\text{Eigengewicht}} \cdot T_{i,
 </div>
 <div class="one">
 
-![h:400](./Diagramme/Mini_Gewichtete_Mischung.svg)
+![](./Diagramme/Mini_Gewichtete_Mischung.svg)
 
 </div>
 </div>
@@ -905,7 +920,7 @@ Anhand der Mischungsformel $T_{\text{neu}} = (1 - 4s) \cdot T_{\text{alt}} + 4s 
 </div>
 <div class="one">
 
-![h:400](./Diagramme/Mini_Stabilitaet_Ampel.svg)
+![](./Diagramme/Mini_Stabilitaet_Ampel.svg)
 
 </div>
 </div>
@@ -930,22 +945,22 @@ $$\boxed{1 - 4s \ge 0 \quad \Longleftrightarrow \quad s = \frac{\alpha \cdot \De
 </div>
 <div class="one">
 
-![h:400](./Diagramme/Mini_Gitterfeinheit_DtMax.svg)
+![](./Diagramme/Mini_Gitterfeinheit_DtMax.svg)
 
 </div>
 </div>
 
 ---
 
-![center w:1080](./Diagramme/Thermo_Stabilitaet_Schachbrett.svg)
+![](./Diagramme/Thermo_Stabilitaet_Schachbrett.svg)
 
 ---
 
-![center w:1080](./Diagramme/Thermo_PingPong_Buffering.svg)
+![](./Diagramme/Thermo_PingPong_Buffering.svg)
 
 ---
 
-![center w:1080](./Diagramme/Thermo_Randbedingungen_Gitter.svg)
+![](./Diagramme/Thermo_Randbedingungen_Gitter.svg)
 
 ---
 
@@ -965,7 +980,7 @@ $$\boxed{1 - 4s \ge 0 \quad \Longleftrightarrow \quad s = \frac{\alpha \cdot \De
 </div>
 <div class="one">
 
-![h:320](./Illustrationen/Randbedingungen_Vergleich.png)
+![](./Illustrationen/Randbedingungen_Vergleich.png)
 
 *Oben: Dirichlet. Unten: Neumann.*
 
@@ -974,12 +989,12 @@ $$\boxed{1 - 4s \ge 0 \quad \Longleftrightarrow \quad s = \frac{\alpha \cdot \De
 
 ---
 
-### Innere Isolator-Wände: Die „Kühlakku“-Stolperfalle (Sprint A3)
+### Innere Isolator-Wände: Die „Kühlakku“-Stolperfalle (Basisaufgabe 1.3)
 
 <div class="columns">
 <div class="three">
 
-Im Live-Sprint zeichnen wir per rechter Maustaste **Isolator-Wände** ($\alpha_{x,y} = 0$) mitten in das Gitter:
+In der Basisaufgabe zeichnen wir per rechter Maustaste **Isolator-Wände** ($\alpha_{x,y} = 0$) mitten in das Gitter:
 
 - **Was passiert, wenn wir nur `_alphaMap[x, y] = 0` setzen?**
   - Die Wandzelle ändert ihre Temperatur zwar nicht mehr und bleibt dauerhaft auf ihrer Starttemperatur ($20\,^\circ\mathrm{C}$).
@@ -989,7 +1004,7 @@ Im Live-Sprint zeichnen wir per rechter Maustaste **Isolator-Wände** ($\alpha_{
 </div>
 <div class="one">
 
-![h:400](./Diagramme/Mini_Kuehlakku_Falle.svg)
+![](./Diagramme/Mini_Kuehlakku_Falle.svg)
 
 </div>
 </div>
@@ -1027,7 +1042,7 @@ Wie kühlt ein Aluminium-Kühlkörper in der Praxis (Aufgabe Track A)? An seiner
 </div>
 <div class="one">
 
-![h:400](./Diagramme/Mini_Robin_Bilanz.svg)
+![](./Diagramme/Mini_Robin_Bilanz.svg)
 
 </div>
 </div>
@@ -1051,14 +1066,14 @@ $$\lambda \cdot \frac{T_{1,y} - T_{0,y}}{\Delta x} = h \cdot \left(T_{0,y} - T_\
 </div>
 <div class="one">
 
-![h:400](./Diagramme/Mini_Robin_Grenzfaelle.svg)
+![](./Diagramme/Mini_Robin_Grenzfaelle.svg)
 
 </div>
 </div>
 
 ---
 
-![center w:1080](./Diagramme/Thermo_CPU_Kuehlkoerper_Aufbau.svg)
+![](./Diagramme/Thermo_CPU_Kuehlkoerper_Aufbau.svg)
 
 ---
 
@@ -1089,7 +1104,7 @@ _tempCurr[100, 100] = 100.0f;
 </div>
 <div class="one">
 
-![w:360](./Illustrationen/Heatmap_Temperaturfeld.png)
+![](./Illustrationen/Heatmap_Temperaturfeld.png)
 
 *Simuliertes Temperaturfeld auf WriteableBitmap.*
 
@@ -1158,14 +1173,14 @@ private unsafe void RenderKernel(
 
 ---
 
-### Laborübung Termin 02: Pixelgrafik & FDM
+### Hausübung Termin 02: Pixelgrafik & FDM
 
-Vertiefende Hausübung (Stufe B, 10 Pkt., Wahlmodell Track A oder B) – Details siehe [Aufgabenblatt 02](../../Uebungen/Termin_02_Pixelgrafik_und_FDM/Aufgabenblatt.md):
+**Stufe 1 (Basisaufgabe `1.1`–`1.3` für alle Teams auf `PixelHeatFDM.sln`):** Von-Neumann-Test, 256-Farben-LUT & Maus-Zeichnen ([Aufgabenblatt 02](../../Uebungen/Termin_02_Pixelgrafik_und_FDM/Aufgabenblatt.md)) $\to$ **Stufe 2 (Vertiefung – Wahl: Track A ODER Track B, 10 Pkt.):**
 
 <div class="columns">
 <div class="two">
 
-#### Track A: CPU-Kühlkörper-Optimizer
+#### Stufe 2 – Track A: CPU-Kühlkörper-Optimizer
 - Inhomogenes Gitter ($a_{\text{Si}}, a_{\text{TIM}}, a_{\text{Cu}}, a_{\text{Al}}$)
 - 10 Kühlrippen mit Robin-Randbedingung
 - Lüfterbetrieb vs. Ausfall ($h = 250 \to 20\,\text{W/m}^2\text{K}$)
@@ -1174,7 +1189,7 @@ Vertiefende Hausübung (Stufe B, 10 Pkt., Wahlmodell Track A oder B) – Details
 </div>
 <div class="two">
 
-#### Track B: Falling Sand & Lava-Simulator
+#### Stufe 2 – Track B: Falling Sand & Lava-Simulator
 - Doppellagiges Gitter ($200 \times 200$): FDM + Automat
 - Gravitation für Sand- und Lava-Pixel
 - Doom-Fire Konvektion & Asche-Zerfall

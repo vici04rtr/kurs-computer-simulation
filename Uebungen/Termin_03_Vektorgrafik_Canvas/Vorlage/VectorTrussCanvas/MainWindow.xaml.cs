@@ -17,7 +17,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        _truss = TrussGeometry.CreateSprintTriangle();
+        _truss = TrussGeometry.CreateStage1Triangle();
     }
 
     private void Redraw()
@@ -143,6 +143,7 @@ public partial class MainWindow : Window
             TrussCanvas, pLeft, pRight, dimY, 
             $"{totalLength:F2} m");
 
+
         // 7. Vertikale DIN 406 Bemaßungskette für die Gesamthöhe (Stufe A)
         var bottomNode = _truss.Nodes.OrderBy(n => n.Y).First();
         var topNode = _truss.Nodes.OrderByDescending(n => n.Y).First();
@@ -154,6 +155,7 @@ public partial class MainWindow : Window
         VectorArrow.AddVerticalDimensionLine(
             TrussCanvas, pBottom, pTop, dimX, 
             $"{totalHeight:F2} m");
+
     }
 
     private void DrawSupportSymbol(Point pos, bool isFixed)
@@ -245,7 +247,7 @@ public partial class MainWindow : Window
 
         _truss = CmbModelSelection.SelectedIndex == 1 
             ? TrussGeometry.CreateIndustrialPrattTruss() 
-            : TrussGeometry.CreateSprintTriangle();
+            : TrussGeometry.CreateStage1Triangle();
 
         Redraw();
     }
@@ -254,7 +256,7 @@ public partial class MainWindow : Window
     {
         _truss = CmbModelSelection.SelectedIndex == 1 
             ? TrussGeometry.CreateIndustrialPrattTruss() 
-            : TrussGeometry.CreateSprintTriangle();
+            : TrussGeometry.CreateStage1Triangle();
 
         TxtInfo.Text = "Modell zurückgesetzt.";
         Redraw();

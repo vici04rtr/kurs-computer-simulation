@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Automated MARP DOM Layout & SVG Font Linter
  * 
  * Verifies that no slide in the curriculum suffers from:
@@ -12,6 +12,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const { lintSectionDeck } = require('./lint_section_slides');
 
 const CHROME_PATHS = [
   'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
@@ -21,7 +22,7 @@ const CHROME_PATHS = [
 ];
 
 function getPuppeteer() {
-  const customPath = 'C:/Users/P28500/AppData/Roaming/npm/node_modules/@mermaid-js/mermaid-cli/node_modules/puppeteer';
+  const customPath = path.join(process.env.APPDATA || 'C:/Users/P28500/AppData/Roaming', 'npm/node_modules/@mermaid-js/mermaid-cli/node_modules/puppeteer');
   if (fs.existsSync(customPath)) {
     return require(customPath);
   }
@@ -92,6 +93,10 @@ function parseSvgMetrics(svgPath) {
 async function lintSlideDeck(markdownPath, browser, options = {}) {
   const minFontSize = options.minFontSize || 11.5;
   const maxOverflow = options.maxOverflow || 2; // Tolerance 2px for subpixel layout
+  const minHeaderMargin = options.minHeaderMargin !== undefined ? options.minHeaderMargin : 12;
+  const minFooterMargin = options.minFooterMargin !== undefined ? options.minFooterMargin : 12;
+  const checkImages = options.checkImages || false;
+  const minImageWidthRatio = options.minImageWidthRatio || 0.95;
 
   const deckDir = path.dirname(markdownPath);
   const deckName = path.basename(deckDir);
@@ -99,7 +104,10 @@ async function lintSlideDeck(markdownPath, browser, options = {}) {
   const tempHtml = path.join(deckDir, '.tmp_lint.html');
 
   const themePath = path.resolve('Themen/fhooe.css');
-  const cmd = `npx @marp-team/marp-cli "${markdownPath}" --theme-set "${themePath}" --html --no-stdin -o "${tempHtml}"`;
+  const marpBin = process.platform === 'win32' && fs.existsSync(path.join(process.env.APPDATA || '', 'npm', 'marp.cmd'))
+    ? `"${path.join(process.env.APPDATA || '', 'npm', 'marp.cmd')}"`
+    : 'npx --yes @marp-team/marp-cli';
+  const cmd = `${marpBin} "${markdownPath}" --theme-set "${themePath}" --html --no-stdin -o "${tempHtml}"`;
   execSync(cmd, { stdio: 'pipe' });
 
   const page = await browser.newPage();
@@ -135,20 +143,31 @@ async function lintSlideDeck(markdownPath, browser, options = {}) {
       const clientWidth = sec.clientWidth;
       const scrollWidth = sec.scrollWidth;
 
+      // Find bottom of header relative to section
+      const header = sec.querySelector('header');
+      const headerBottom = header ? (header.getBoundingClientRect().bottom - sec.getBoundingClientRect().top) : 0;
+
       // Find top of footer relative to section
       const footer = sec.querySelector('footer');
       const footerTop = footer ? (footer.getBoundingClientRect().top - sec.getBoundingClientRect().top) : clientHeight;
 
-      // Find lowest content edge
+      // Find highest and lowest content edge
+      const contentChildren = Array.from(sec.children).filter(child => child.tagName !== 'HEADER' && child.tagName !== 'FOOTER');
+      let contentTop = clientHeight;
       let contentBottom = 0;
-      Array.from(sec.children).forEach(child => {
-        if (child.tagName === 'HEADER' || child.tagName === 'FOOTER') return;
+
+      contentChildren.forEach(child => {
         const rect = child.getBoundingClientRect();
+        const topRel = rect.top - sec.getBoundingClientRect().top;
         const bottomRel = rect.bottom - sec.getBoundingClientRect().top;
-        if (bottomRel > contentBottom) {
-          contentBottom = bottomRel;
-        }
+        if (topRel < contentTop) contentTop = topRel;
+        if (bottomRel > contentBottom) contentBottom = bottomRel;
       });
+
+      if (contentChildren.length === 0) {
+        contentTop = 0;
+        contentBottom = 0;
+      }
 
       // Images in section
       const images = Array.from(sec.querySelectorAll('img')).map(img => {
@@ -176,14 +195,90 @@ async function lintSlideDeck(markdownPath, browser, options = {}) {
         scrollHeight,
         clientWidth,
         scrollWidth,
-        contentBottom,
+        headerBottom,
         footerTop,
+        contentTop,
+        contentBottom,
         images
       });
     });
 
     return results;
   });
+
+  // Inspect all SVG images directly in the browser DOM to measure true effective font sizes
+  const svgInspectionMap = new Map();
+  for (const s of rawSlides) {
+    for (const img of s.images) {
+      if (img.src && (img.src.endsWith('.svg') || img.src.includes('.svg?'))) {
+        const cleanSrc = decodeURIComponent(img.src.split('?')[0]);
+        const absSvgPath = path.resolve(deckDir, cleanSrc);
+        const cacheKey = `${cleanSrc}__${Math.round(img.renderedWidth)}x${Math.round(img.renderedHeight)}`;
+        if (!svgInspectionMap.has(cacheKey) && fs.existsSync(absSvgPath) && img.renderedWidth > 0 && img.renderedHeight > 0) {
+          const svgText = fs.readFileSync(absSvgPath, 'utf8');
+          const evalResult = await page.evaluate(({ svgText, w, h, minSize }) => {
+            let container = document.getElementById('__svg_eval_container');
+            if (!container) {
+              container = document.createElement('div');
+              container.id = '__svg_eval_container';
+              container.style.position = 'fixed';
+              container.style.left = '0';
+              container.style.top = '0';
+              container.style.zIndex = '-9999';
+              container.style.pointerEvents = 'none';
+              container.style.visibility = 'hidden';
+              document.body.appendChild(container);
+            }
+            container.style.width = w + 'px';
+            container.style.height = h + 'px';
+            container.innerHTML = svgText;
+
+            const svg = container.querySelector('svg');
+            if (!svg) return null;
+            svg.style.width = '100%';
+            svg.style.height = '100%';
+
+            const textNodes = Array.from(svg.querySelectorAll('text, tspan'));
+            const textDetails = [];
+
+            textNodes.forEach(t => {
+              const str = (t.textContent || '').trim();
+              if (!str) return;
+              if (t.tagName.toLowerCase() === 'text' && t.querySelector('tspan')) return;
+
+              const ctm = t.getScreenCTM();
+              const cs = window.getComputedStyle(t);
+              const declFont = parseFloat(cs.fontSize) || 0;
+              const scaleY = ctm ? Math.abs(ctm.d) : 1;
+              const effectivePx = declFont * scaleY;
+
+              if (declFont > 0 && effectivePx > 0) {
+                textDetails.push({
+                  text: str.length > 28 ? str.substring(0, 25) + '...' : str,
+                  declFont: Math.round(declFont * 10) / 10,
+                  effectivePx: Math.round(effectivePx * 10) / 10
+                });
+              }
+            });
+
+            if (textDetails.length === 0) return { hasText: false, allSmallTexts: [] };
+
+            const minEff = textDetails.reduce((min, cur) => cur.effectivePx < min.effectivePx ? cur : min, textDetails[0]);
+            const smallTexts = textDetails.filter(t => t.effectivePx < minSize);
+
+            return {
+              hasText: true,
+              minFont: minEff.effectivePx,
+              sampleSmallText: minEff,
+              allSmallTexts: smallTexts
+            };
+          }, { svgText, w: img.renderedWidth, h: img.renderedHeight, minSize: minFontSize });
+
+          svgInspectionMap.set(cacheKey, evalResult);
+        }
+      }
+    }
+  }
 
   await page.close();
 
@@ -196,33 +291,29 @@ async function lintSlideDeck(markdownPath, browser, options = {}) {
   const slides = [];
   for (const s of rawSlides) {
     const vOverflow = Math.max(0, s.scrollHeight - s.clientHeight);
-    const footerCollision = Math.max(0, s.contentBottom - s.footerTop);
-    const effectiveVOverflow = Math.max(vOverflow, footerCollision);
-
     const hOverflow = Math.max(0, s.scrollWidth - s.clientWidth);
+
+    const headerMargin = s.contentTop > 0 ? (s.contentTop - s.headerBottom) : minHeaderMargin;
+    const footerMargin = s.contentBottom > 0 ? (s.footerTop - s.contentBottom) : minFooterMargin;
+
+    const hasHeaderCollision = headerMargin < minHeaderMargin;
+    const hasFooterCollision = footerMargin < minFooterMargin;
+    const effectiveVOverflow = Math.max(vOverflow, Math.max(0, -footerMargin));
 
     const svgIssues = [];
     for (const img of s.images) {
       if (img.src && (img.src.endsWith('.svg') || img.src.includes('.svg?'))) {
         const cleanSrc = decodeURIComponent(img.src.split('?')[0]);
-        const absSvgPath = path.resolve(deckDir, cleanSrc);
-        const metrics = parseSvgMetrics(absSvgPath);
-        if (metrics && metrics.viewBoxWidth) {
-          const scale = img.renderedWidth / metrics.viewBoxWidth;
-          const effectiveFont = metrics.baseFont * scale;
-          if (effectiveFont < minFontSize && img.renderedWidth > 0) {
-            svgIssues.push({
-              src: cleanSrc,
-              viewBoxWidth: metrics.viewBoxWidth,
-              viewBoxHeight: metrics.viewBoxHeight,
-              aspectRatio: metrics.aspectRatio ? metrics.aspectRatio.toFixed(2) : 'N/A',
-              renderedWidth: Math.round(img.renderedWidth),
-              renderedHeight: Math.round(img.renderedHeight),
-              scale: scale.toFixed(3),
-              baseFont: metrics.baseFont,
-              effectiveFont: effectiveFont.toFixed(1)
-            });
-          }
+        const cacheKey = `${cleanSrc}__${Math.round(img.renderedWidth)}x${Math.round(img.renderedHeight)}`;
+        const inspection = svgInspectionMap.get(cacheKey);
+        if (inspection && inspection.hasText && inspection.allSmallTexts && inspection.allSmallTexts.length > 0) {
+          svgIssues.push({
+            src: cleanSrc,
+            renderedBox: `${Math.round(img.renderedWidth)}x${Math.round(img.renderedHeight)}`,
+            minFont: inspection.minFont,
+            sampleSmallText: inspection.allSmallTexts[0],
+            smallCount: inspection.allSmallTexts.length
+          });
         }
       }
     }
@@ -235,12 +326,38 @@ async function lintSlideDeck(markdownPath, browser, options = {}) {
       ...s,
       effectiveVOverflow: Math.round(effectiveVOverflow),
       hOverflow: Math.round(hOverflow),
+      headerMargin: Math.round(headerMargin),
+      footerMargin: Math.round(footerMargin),
       svgIssues,
-      hasError: hasVOverflow || hasHOverflow || hasSvgIssues,
+      hasError: hasVOverflow || hasHOverflow || hasHeaderCollision || hasFooterCollision || hasSvgIssues,
       hasVOverflow,
       hasHOverflow,
+      hasHeaderCollision,
+      hasFooterCollision,
       hasSvgIssues
     });
+  }
+
+  // 3. Schema- und BildprÃ¼fung fÃ¼r Kapitel- und AbschnittsÃ¼bersichten
+  if (!options.skipSchema) {
+    const sectionLint = lintSectionDeck(markdownPath);
+    if (sectionLint && sectionLint.issues && sectionLint.issues.length > 0) {
+      for (const iss of sectionLint.issues) {
+        let targetSlide = null;
+        if (iss.slideNum > 0 && iss.slideNum <= slides.length) {
+          targetSlide = slides[iss.slideNum - 1];
+        } else if (slides.length > 0) {
+          targetSlide = slides[0];
+        }
+
+        if (targetSlide) {
+          targetSlide.schemaIssues = targetSlide.schemaIssues || [];
+          targetSlide.schemaIssues.push(iss.message);
+          targetSlide.hasError = true;
+          targetSlide.hasSchemaIssues = true;
+        }
+      }
+    }
   }
 
   return {
@@ -254,7 +371,33 @@ async function lintSlideDeck(markdownPath, browser, options = {}) {
 
 async function main() {
   const args = process.argv.slice(2);
-  const target = args[0] || 'all';
+  let target = 'all';
+  let minFontSize = 11.5;
+
+  let minHeaderMargin = 12;
+  let minFooterMargin = 12;
+  let skipSchema = false;
+  let checkImages = false;
+  let minImageWidthRatio = 0.95;
+
+  args.forEach(arg => {
+    if (arg.startsWith('--min-font-size=')) {
+      minFontSize = parseFloat(arg.split('=')[1]);
+    } else if (arg.startsWith('--min-header-margin=')) {
+      minHeaderMargin = parseFloat(arg.split('=')[1]);
+    } else if (arg.startsWith('--min-footer-margin=')) {
+      minFooterMargin = parseFloat(arg.split('=')[1]);
+    } else if (arg === '--skip-schema') {
+      skipSchema = true;
+    } else if (arg === '--check-images') {
+      checkImages = true;
+    } else if (arg.startsWith('--min-image-width=')) {
+      minImageWidthRatio = parseFloat(arg.split('=')[1]);
+      checkImages = true;
+    } else if (!arg.startsWith('--')) {
+      target = arg;
+    }
+  });
 
   const puppeteer = getPuppeteer();
   const execPath = getBrowserExecutable();
@@ -300,23 +443,41 @@ async function main() {
   for (const deck of decks) {
     const deckName = path.basename(path.dirname(deck));
     process.stdout.write(`Inspecting ${deckName} ... `);
-    const res = await lintSlideDeck(deck, browser);
+    const res = await lintSlideDeck(deck, browser, { minFontSize, minHeaderMargin, minFooterMargin, skipSchema, checkImages, minImageWidthRatio });
     allResults.push(res);
     grandTotalSlides += res.totalSlides;
     grandTotalErrors += res.errorSlides.length;
 
     if (res.errorSlides.length === 0) {
-      console.log(`✓ OK (${res.totalSlides} Folien sauber)`);
+      console.log(`âœ“ OK (${res.totalSlides} Folien sauber)`);
     } else {
-      console.log(`✗ ${res.errorSlides.length} Problem-Folien gefunden!`);
+      console.log(`âœ— ${res.errorSlides.length} Problem-Folien gefunden!`);
       for (const err of res.errorSlides) {
         const issues = [];
-        if (err.hasVOverflow) issues.push(`Vertikaler Überlauf: +${err.effectiveVOverflow}px`);
-        if (err.hasHOverflow) issues.push(`Horizontaler Überlauf: +${err.hOverflow}px`);
+        if (err.hasVOverflow) issues.push(`Vertikaler Ãœberlauf: +${err.effectiveVOverflow}px`);
+        if (err.hasHOverflow) issues.push(`Horizontaler Ãœberlauf: +${err.hOverflow}px`);
+        if (err.hasHeaderCollision) {
+          if (err.headerMargin < 0) {
+            issues.push(`Kopfzeilen-Ãœberdeckung: Ãœberlappung um ${Math.abs(err.headerMargin)}px`);
+          } else {
+            issues.push(`Kopfzeilen-Abstand zu gering: ${err.headerMargin}px (Mindestabstand: ${minHeaderMargin}px)`);
+          }
+        }
+        if (err.hasFooterCollision) {
+          if (err.footerMargin < 0) {
+            issues.push(`FuÃŸzeilen-Ãœberdeckung: Ãœberlappung um ${Math.abs(err.footerMargin)}px`);
+          } else {
+            issues.push(`FuÃŸzeilen-Abstand zu gering: ${err.footerMargin}px (Mindestabstand: ${minFooterMargin}px)`);
+          }
+        }
         if (err.hasSvgIssues) {
           err.svgIssues.forEach(s => {
-            issues.push(`SVG Schrift zu klein: ${path.basename(s.src)} (${s.effectiveFont}px < 11.5px, Scale: ${s.scale}, Aspect: ${s.aspectRatio}:1)`);
+            const detail = s.sampleSmallText ? ` [z.B. "${s.sampleSmallText.text}": ${s.sampleSmallText.effectivePx}px, deklariert: ${s.sampleSmallText.declFont}px]` : '';
+            issues.push(`SVG Schrift zu klein: ${path.basename(s.src)} (${s.minFont}px < ${minFontSize}px, Box: ${s.renderedBox})${detail}`);
           });
+        }
+        if (err.schemaIssues && err.schemaIssues.length > 0) {
+          err.schemaIssues.forEach(msg => issues.push(`Schema-Fehler: ${msg}`));
         }
         console.log(`    - Folie ${err.pagination} [${err.title || 'Ohne Titel'}]: ${issues.join(' | ')}`);
       }
@@ -327,8 +488,8 @@ async function main() {
 
   console.log(`\n================================================================`);
   console.log(`  ZUSAMMENFASSUNG`);
-  console.log(`  Geprüfte Foliensätze: ${decks.length}`);
-  console.log(`  Geprüfte Folien gesamt: ${grandTotalSlides}`);
+  console.log(`  GeprÃ¼fte FoliensÃ¤tze: ${decks.length}`);
+  console.log(`  GeprÃ¼fte Folien gesamt: ${grandTotalSlides}`);
   console.log(`  Gefundene Problem-Folien: ${grandTotalErrors}`);
   console.log(`================================================================\n`);
 

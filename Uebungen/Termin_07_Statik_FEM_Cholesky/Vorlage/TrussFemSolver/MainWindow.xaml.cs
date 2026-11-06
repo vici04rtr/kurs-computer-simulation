@@ -27,20 +27,20 @@ namespace TrussFemSolver
             int selectedIndex = ModelSelector?.SelectedIndex ?? 0;
             if (selectedIndex == 0)
             {
-                // Stufe A: Standard 3-Knoten-Dreiecksträger
-                _currentModel = CholeskySolver.CreateSprintModel(loadFy: loadN);
+                // Stufe 1: Standard 3-Knoten-Dreiecksträger
+                _currentModel = CholeskySolver.CreateStage1Model(loadFy: loadN);
             }
             else if (selectedIndex == 1)
             {
-                // TODO [Track A - Industrie]: Portalkran mit Wanderlast
+                // TODO [Stufe 2 Track A - Industrie]: Portalkran mit Wanderlast
                 // Implementieren Sie hier die Fachwerktopologie des Krans
-                _currentModel = CholeskySolver.CreateSprintModel(loadFy: loadN);
+                _currentModel = CholeskySolver.CreateStage1Model(loadFy: loadN);
             }
             else
             {
-                // TODO [Track B - Simulation Game]: Bridge Constructor Fachwerk
+                // TODO [Stufe 2 Track B - Simulation Game]: Bridge Constructor Fachwerk
                 // Implementieren Sie hier eine Brückengeometrie mit mehreren Feldern
-                _currentModel = CholeskySolver.CreateSprintModel(loadFy: loadN);
+                _currentModel = CholeskySolver.CreateStage1Model(loadFy: loadN);
             }
 
             try
@@ -213,7 +213,7 @@ namespace TrussFemSolver
                 TrussCanvas.Children.Add(nodeLabel);
             }
 
-            // TODO [Stufe A - Aufgabe A1]:
+            // TODO [Stufe 1 - Aufgabe 1.1]:
             // Zeichnen Sie hier die Auflager-Symbole (anhand von _currentModel.FixedDofs)
             // sowie rote Kraftpfeile für äußere Lasten (_currentModel.ExternalForces) und
             // grüne Kraftpfeile für die berechneten Auflagerreaktionen (_currentSolution.ReactionForces)!

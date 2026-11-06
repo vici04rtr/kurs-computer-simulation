@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Automated SVG & Chart Inspection Tool
  * 
  * Performs deep visual and structural analysis of all SVGs and raster charts:
@@ -12,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 
 const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-const PUPPETEER_PATH = 'C:/Users/P28500/AppData/Roaming/npm/node_modules/@mermaid-js/mermaid-cli/node_modules/puppeteer';
+const PUPPETEER_PATH = path.join(process.env.APPDATA || 'C:/Users/P28500/AppData/Roaming', 'npm/node_modules/@mermaid-js/mermaid-cli/node_modules/puppeteer');
 
 function getPuppeteer() {
   if (fs.existsSync(PUPPETEER_PATH)) return require(PUPPETEER_PATH);
@@ -20,7 +20,7 @@ function getPuppeteer() {
 }
 
 async function auditSvgFile(browser, svgPath, options = {}) {
-  const rasterize = options.rasterize !== false;
+  const rasterize = options.rasterize === true;
   const rasterDir = options.rasterDir || path.resolve('.tmp_raster_svg');
   if (rasterize && !fs.existsSync(rasterDir)) fs.mkdirSync(rasterDir, { recursive: true });
 
@@ -29,7 +29,7 @@ async function auditSvgFile(browser, svgPath, options = {}) {
 
   const fileUrl = 'file:///' + path.resolve(svgPath).replace(/\\/g, '/');
   try {
-    await page.goto(fileUrl, { waitUntil: 'networkidle0', timeout: 10000 });
+    await page.goto(fileUrl, { waitUntil: 'domcontentloaded', timeout: 8000 });
   } catch (e) {
     await page.close();
     return { path: svgPath, error: 'Failed to load SVG: ' + e.message, issues: [] };
@@ -39,7 +39,9 @@ async function auditSvgFile(browser, svgPath, options = {}) {
     const issues = [];
     const svg = document.querySelector('svg');
     if (!svg) {
-      return { hasSvg: false, issues: ['No <svg> root element found'] };
+      const parserError = document.querySelector('parsererror');
+      const errText = parserError ? parserError.innerText.trim().replace(/\s+/g, ' ') : 'No <svg> root element found (XML parsing failed)';
+      return { hasSvg: false, issues: [{ type: 'XML_PARSE_ERROR', message: errText }] };
     }
 
     const svgRect = svg.getBoundingClientRect();
@@ -82,6 +84,52 @@ async function auditSvgFile(browser, svgPath, options = {}) {
       }
     });
 
+    // 1b. Badge / Pill / Shield Rectangle Text Overflow Check (Custom SVGs)
+    const allTexts = Array.from(document.querySelectorAll('text'));
+    const allRects = Array.from(document.querySelectorAll('rect')).filter(r => !r.closest('defs') && !r.closest('clipPath'));
+
+    allTexts.forEach(t => {
+      const tBox = t.getBoundingClientRect();
+      if (tBox.width <= 0 || tBox.height <= 0) return;
+      const tText = (t.textContent || '').trim().replace(/\s+/g, ' ');
+      if (!tText) return;
+
+      const tCenterX = (tBox.left + tBox.right) / 2;
+      const tCenterY = (tBox.top + tBox.bottom) / 2;
+
+      allRects.forEach(r => {
+        const rBox = r.getBoundingClientRect();
+        if (rBox.width < 20 || rBox.height < 10) return;
+        if (rBox.width > svgWidth * 0.95 && rBox.height > svgHeight * 0.95) return;
+
+        const centerInside = (tCenterX >= rBox.left && tCenterX <= rBox.right &&
+                              tCenterY >= rBox.top && tCenterY <= rBox.bottom);
+        const isBadgeOrPill = rBox.height < 60 && rBox.width < 320;
+
+        if (centerInside && isBadgeOrPill) {
+          const overflowLeft = rBox.left - tBox.left;
+          const overflowRight = tBox.right - rBox.right;
+          const overflowTop = rBox.top - tBox.top;
+          const overflowBottom = tBox.bottom - rBox.bottom;
+
+          if (overflowLeft > 2 || overflowRight > 2) {
+            const maxOverflow = Math.max(overflowLeft, overflowRight);
+            issues.push({
+              type: 'SHIELD_TEXT_OVERFLOW',
+              message: `Text "${tText.slice(0, 30)}" exceeds background rect horizontally by ${Math.round(maxOverflow)}px (Text: ${Math.round(tBox.width)}px, Rect: ${Math.round(rBox.width)}px)`
+            });
+          }
+          if (overflowTop > 2 || overflowBottom > 2) {
+            const maxOverflow = Math.max(overflowTop, overflowBottom);
+            issues.push({
+              type: 'SHIELD_TEXT_OVERFLOW',
+              message: `Text "${tText.slice(0, 30)}" exceeds background rect vertically by ${Math.round(maxOverflow)}px (Text: ${Math.round(tBox.height)}px, Rect: ${Math.round(rBox.height)}px)`
+            });
+          }
+        }
+      });
+    });
+
     // 2. ViewBox Clipping Check
     const elements = Array.from(document.querySelectorAll('text, rect, path, foreignObject'));
     let outOfBoundsCount = 0;
@@ -121,16 +169,34 @@ async function auditSvgFile(browser, svgPath, options = {}) {
 
         const xOverlap = Math.max(0, Math.min(a.rect.right, b.rect.right) - Math.max(a.rect.left, b.rect.left));
         const yOverlap = Math.max(0, Math.min(a.rect.bottom, b.rect.bottom) - Math.max(a.rect.top, b.rect.top));
-        if (xOverlap >= 8 && yOverlap >= 6) {
+
+        // Strict Text-Text Collision Gate:
+        // 1. Line-height collision: Two horizontally overlapping lines (>= 15px) touching vertically (>= 1.5px)
+        // 2. Corner/box collision: Any text bounding boxes colliding by >= 4px in both dimensions
+        const isLineCollision = xOverlap >= 15 && yOverlap >= 1.5;
+        const isBoxCollision = xOverlap >= 4 && yOverlap >= 3;
+
+        if (isLineCollision || isBoxCollision) {
           issues.push({
             type: 'TEXT_TEXT_COLLISION',
             message: `"${a.text.slice(0, 25)}" collides with "${b.text.slice(0, 25)}" (${Math.round(xOverlap)}x${Math.round(yOverlap)}px)`
           });
+        } else if (yOverlap >= 6) {
+          // 3. Proximity violation (Horizontaler Mindestabstand auf gleicher Zeile):
+          // Getrennte Textelemente auf gleicher visueller Zeile mÃ¼ssen mindestens 10px Mindestabstand halten
+          const horizDist = Math.max(a.rect.left, b.rect.left) - Math.min(a.rect.right, b.rect.right);
+          if (horizDist < 10.0) {
+            issues.push({
+              type: 'TEXT_PROXIMITY_VIOLATION',
+              message: `Horizontal distance between "${a.text.slice(0, 20)}" and "${b.text.slice(0, 20)}" (${horizDist.toFixed(1)}px) is below 10px minimum`
+            });
+          }
         }
       }
     }
 
-    // 4. Panel / Card Boundary Clipping (Text extending outside visible structural card rect)
+    // 4. Panel / Card Boundary Margin & Clipping
+    // PrÃ¼ft, ob Text innerhalb struktureller Boxen/Cards liegt und ausreichend Mindestabstand zu den RÃ¤ndern einhÃ¤lt
     const cards = Array.from(document.querySelectorAll('rect'))
       .filter(r => !r.closest('defs') && !r.closest('clipPath'))
       .filter(r => {
@@ -141,36 +207,95 @@ async function auditSvgFile(browser, svgPath, options = {}) {
         return (hasFill || hasStroke) && !isDashed && style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
       })
       .map(r => r.getBoundingClientRect())
-      .filter(r => r.width > 350 && r.height > 250);
+      .filter(r => r.width >= 80 && r.height >= 40);
 
     texts.forEach(t => {
       cards.forEach(card => {
-        const startsInside = t.rect.left >= card.left + 5 && t.rect.left < card.right - 25 &&
-                             t.rect.top >= card.top + 5 && t.rect.top < card.bottom - 5;
-        if (startsInside && t.rect.right > card.right + 4) {
-          issues.push({
-            type: 'PANEL_CLIPPING',
-            message: `"${t.text.slice(0, 25)}" overflows card right edge by ${Math.round(t.rect.right - card.right)}px`
-          });
+        const startsInside = t.rect.left >= card.left + 4 && t.rect.left < card.right - 25 &&
+                             t.rect.top >= card.top + 2 && t.rect.bottom <= card.bottom + 4;
+        if (startsInside) {
+          const rightMargin = card.right - t.rect.right;
+          if (rightMargin < 0) {
+            issues.push({
+              type: 'PANEL_CLIPPING',
+              message: `"${t.text.slice(0, 25)}" overflows card right edge by ${Math.round(-rightMargin)}px`
+            });
+          } else if (rightMargin < 8.0) {
+            issues.push({
+              type: 'CARD_MARGIN_TOO_SMALL',
+              message: `Text "${t.text.slice(0, 25)}" is too close to card right edge (${rightMargin.toFixed(1)}px < 8px minimum)`
+            });
+          }
         }
       });
     });
 
-    // 5. Unshielded Text-Line Collisions (Geometry lines intersecting text without opaque background)
-    texts.forEach(t => {
-      const rect = t.rect;
-      const fractions = [0.15, 0.3, 0.5, 0.7, 0.85];
-      let lineHit = false;
+    // 5. Unshielded Text-Line Collisions (Exact geometric segment intersection + shielding check)
+    function clipSegmentAABB(x1, y1, x2, y2, left, top, right, bottom) {
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      let t0 = 0.0;
+      let t1 = 1.0;
+      const p = [-dx, dx, -dy, dy];
+      const q = [x1 - left, right - x1, y1 - top, bottom - y1];
 
-      for (const fx of fractions) {
-        for (const fy of [0.3, 0.5, 0.7]) {
-          const pt = { x: rect.left + rect.width * fx, y: rect.top + rect.height * fy };
-          const els = document.elementsFromPoint(pt.x, pt.y);
-          const lineIndex = els.findIndex(el => el.tagName === 'line' || (el.tagName === 'path' && el.getAttribute('stroke') && (!el.getAttribute('fill') || el.getAttribute('fill') === 'none')));
-          if (lineIndex !== -1) {
-            const textIndex = els.indexOf(t.el);
-            let shielded = false;
-            for (let i = Math.min(textIndex, lineIndex) + 1; i < Math.max(textIndex, lineIndex); i++) {
+      for (let i = 0; i < 4; i++) {
+        if (p[i] === 0) {
+          if (q[i] < 0) return null;
+        } else {
+          const r = q[i] / p[i];
+          if (p[i] < 0) {
+            if (r > t1) return null;
+            if (r > t0) t0 = r;
+          } else {
+            if (r < t0) return null;
+            if (r < t1) t1 = r;
+          }
+        }
+      }
+      if (t0 > t1) return null;
+      return {
+        t0, t1,
+        pEnter: { x: x1 + t0 * dx, y: y1 + t0 * dy },
+        pExit: { x: x1 + t1 * dx, y: y1 + t1 * dy },
+        length: Math.hypot((t1 - t0) * dx, (t1 - t0) * dy)
+      };
+    }
+
+    const svgLines = Array.from(document.querySelectorAll('line')).map(l => {
+      const ctm = l.getScreenCTM();
+      if (!ctm) return null;
+      const x1 = parseFloat(l.getAttribute('x1') || '0');
+      const y1 = parseFloat(l.getAttribute('y1') || '0');
+      const x2 = parseFloat(l.getAttribute('x2') || '0');
+      const y2 = parseFloat(l.getAttribute('y2') || '0');
+      const style = window.getComputedStyle(l);
+      const stroke = style.stroke;
+      const strokeWidth = parseFloat(style.strokeWidth || '0');
+      const hasStroke = stroke && stroke !== 'none' && stroke !== 'transparent' && strokeWidth > 0;
+      return {
+        el: l,
+        p1: { x: ctm.a * x1 + ctm.c * y1 + ctm.e, y: ctm.b * x1 + ctm.d * y1 + ctm.f },
+        p2: { x: ctm.a * x2 + ctm.c * y2 + ctm.e, y: ctm.b * x2 + ctm.d * y2 + ctm.f },
+        hasStroke
+      };
+    }).filter(l => l && l.hasStroke);
+
+    const lineCollisionSeen = new Set();
+    texts.forEach(t => {
+      // Analytischer Schnitt mit allen <line> Elementen
+      svgLines.forEach(l => {
+        const clip = clipSegmentAABB(l.p1.x, l.p1.y, l.p2.x, l.p2.y, t.rect.left, t.rect.top, t.rect.right, t.rect.bottom);
+        if (clip && clip.length >= 6) {
+          const midX = (clip.pEnter.x + clip.pExit.x) / 2;
+          const midY = (clip.pEnter.y + clip.pExit.y) / 2;
+          const els = document.elementsFromPoint(midX, midY);
+          const textIdx = els.indexOf(t.el);
+          const lineIdx = els.indexOf(l.el);
+
+          let shielded = false;
+          if (textIdx !== -1 && lineIdx !== -1) {
+            for (let i = Math.min(textIdx, lineIdx) + 1; i < Math.max(textIdx, lineIdx); i++) {
               const el = els[i];
               const style = window.getComputedStyle(el);
               const fill = style.fill;
@@ -179,21 +304,289 @@ async function auditSvgFile(browser, svgPath, options = {}) {
                 break;
               }
             }
+          }
+
+          if (!shielded) {
+            const key = t.text + '_line';
+            if (!lineCollisionSeen.has(key)) {
+              lineCollisionSeen.add(key);
+              issues.push({
+                type: 'TEXT_LINE_COLLISION',
+                message: `Unshielded line intersects text "${t.text.slice(0, 25)}"`
+              });
+            }
+          }
+        }
+      });
+
+      // Pfad-Abtastung fÃ¼r Freiformkurven (<path>) mit feinem Raster (11x5 Punkte)
+      if (!lineCollisionSeen.has(t.text + '_line')) {
+        const fractionsX = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9];
+        const fractionsY = [0.2, 0.35, 0.5, 0.65, 0.8];
+        let pathHit = false;
+
+        for (const fx of fractionsX) {
+          for (const fy of fractionsY) {
+            const pt = { x: t.rect.left + t.rect.width * fx, y: t.rect.top + t.rect.height * fy };
+            const els = document.elementsFromPoint(pt.x, pt.y);
+            const pathIndex = els.findIndex(el => el.tagName === 'path' && el.getAttribute('stroke') && (!el.getAttribute('fill') || el.getAttribute('fill') === 'none'));
+            if (pathIndex !== -1) {
+              const textIndex = els.indexOf(t.el);
+              let shielded = false;
+              for (let i = Math.min(textIndex, pathIndex) + 1; i < Math.max(textIndex, pathIndex); i++) {
+                const el = els[i];
+                const style = window.getComputedStyle(el);
+                const fill = style.fill;
+                if (fill && fill !== 'none' && fill !== 'transparent' && style.opacity !== '0' && style.fillOpacity !== '0') {
+                  shielded = true;
+                  break;
+                }
+              }
+              if (!shielded) {
+                pathHit = true;
+                break;
+              }
+            }
+          }
+          if (pathHit) break;
+        }
+
+        if (pathHit) {
+          lineCollisionSeen.add(t.text + '_line');
+          issues.push({
+            type: 'TEXT_LINE_COLLISION',
+            message: `Unshielded path intersects text "${t.text.slice(0, 25)}"`
+          });
+        }
+      }
+    });
+
+    // 5b. Unshielded Text-Rect Border Collisions (Stroked rect edges intersecting text without opaque background)
+    const strokedRects = Array.from(document.querySelectorAll('rect')).map(el => {
+      const style = window.getComputedStyle(el);
+      const stroke = style.stroke;
+      const strokeWidth = parseFloat(style.strokeWidth || '0');
+      const r = el.getBoundingClientRect();
+      return {
+        el,
+        hasStroke: stroke && stroke !== 'none' && stroke !== 'transparent' && strokeWidth > 0,
+        strokeWidth,
+        rect: { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height }
+      };
+    }).filter(r => r.hasStroke && r.rect.width > 10 && r.rect.height > 10);
+
+    const rectCollisionSeen = new Set();
+    texts.forEach(t => {
+      strokedRects.forEach(sr => {
+        if (sr.el.contains(t.el)) return;
+
+        const R = sr.rect;
+        const T = t.rect;
+
+        const edges = [
+          { name: 'top', y: R.top, x1: R.left, x2: R.right, isHoriz: true },
+          { name: 'bottom', y: R.bottom, x1: R.left, x2: R.right, isHoriz: true },
+          { name: 'left', x: R.left, y1: R.top, y2: R.bottom, isHoriz: false },
+          { name: 'right', x: R.right, y1: R.top, y2: R.bottom, isHoriz: false }
+        ];
+
+        edges.forEach(edge => {
+          let intersects = false;
+          let pt = null;
+
+          if (edge.isHoriz) {
+            const xOverlapMin = Math.max(T.left, edge.x1);
+            const xOverlapMax = Math.min(T.right, edge.x2);
+            if (xOverlapMax - xOverlapMin >= 8) {
+              if (T.top + 3 <= edge.y && T.bottom - 3 >= edge.y) {
+                intersects = true;
+                pt = { x: (xOverlapMin + xOverlapMax) / 2, y: edge.y };
+              }
+            }
+          } else {
+            const yOverlapMin = Math.max(T.top, edge.y1);
+            const yOverlapMax = Math.min(T.bottom, edge.y2);
+            if (yOverlapMax - yOverlapMin >= 8) {
+              if (T.left + 3 <= edge.x && T.right - 3 >= edge.x) {
+                intersects = true;
+                pt = { x: edge.x, y: (yOverlapMin + yOverlapMax) / 2 };
+              }
+            }
+          }
+
+          if (intersects && pt) {
+            const elsAtPt = document.elementsFromPoint(pt.x, pt.y);
+            const textIdx = elsAtPt.indexOf(t.el);
+            const rectIdx = elsAtPt.indexOf(sr.el);
+            let shielded = false;
+
+            if (textIdx !== -1 && rectIdx !== -1) {
+              for (let i = Math.min(textIdx, rectIdx) + 1; i < Math.max(textIdx, rectIdx); i++) {
+                const el = elsAtPt[i];
+                const style = window.getComputedStyle(el);
+                const fill = style.fill;
+                if (fill && fill !== 'none' && fill !== 'transparent' && style.opacity !== '0' && style.fillOpacity !== '0') {
+                  shielded = true;
+                  break;
+                }
+              }
+            }
+
             if (!shielded) {
-              lineHit = true;
+              const key = t.text + '_' + edge.name;
+              if (!rectCollisionSeen.has(key)) {
+                rectCollisionSeen.add(key);
+                issues.push({
+                  type: 'TEXT_RECT_BORDER_COLLISION',
+                  message: `Unshielded rectangle ${edge.name} border intersects text "${t.text.slice(0, 25)}"`
+                });
+              }
+            }
+          }
+        });
+      });
+    });
+
+    // 5c. Unshielded Text-Circle Collisions (Marker/node circles overlapping text without opaque background)
+    const svgCircles = Array.from(document.querySelectorAll('circle')).map(c => {
+      const ctm = c.getScreenCTM();
+      if (!ctm) return null;
+      const cx = parseFloat(c.getAttribute('cx') || '0');
+      const cy = parseFloat(c.getAttribute('cy') || '0');
+      const r = parseFloat(c.getAttribute('r') || '0');
+      const center = { x: ctm.a * cx + ctm.c * cy + ctm.e, y: ctm.b * cx + ctm.d * cy + ctm.f };
+      const scale = Math.hypot(ctm.a, ctm.b);
+      const rScreen = r * scale;
+      const style = window.getComputedStyle(c);
+      const strokeWidth = parseFloat(style.strokeWidth || '0') * scale;
+      return { el: c, center, r: rScreen, strokeWidth, effectiveR: rScreen + strokeWidth / 2 };
+    }).filter(c => c && c.r > 0);
+
+    const circleCollisionSeen = new Set();
+    texts.forEach(t => {
+      svgCircles.forEach(c => {
+        const px = Math.max(t.rect.left, Math.min(c.center.x, t.rect.right));
+        const py = Math.max(t.rect.top, Math.min(c.center.y, t.rect.bottom));
+        const dist = Math.hypot(c.center.x - px, c.center.y - py);
+
+        if (dist <= c.effectiveR) {
+          // Check if text is intentionally contained inside a large badge/node circle
+          const textInside = (
+            t.rect.left >= c.center.x - c.effectiveR &&
+            t.rect.right <= c.center.x + c.effectiveR &&
+            t.rect.top >= c.center.y - c.effectiveR &&
+            t.rect.bottom <= c.center.y + c.effectiveR
+          );
+          if (textInside) return;
+
+          const els = document.elementsFromPoint(px, py);
+          const textIdx = els.indexOf(t.el);
+          const circleIdx = els.indexOf(c.el);
+
+          let shielded = false;
+          if (textIdx !== -1 && circleIdx !== -1) {
+            for (let i = Math.min(textIdx, circleIdx) + 1; i < Math.max(textIdx, circleIdx); i++) {
+              const el = els[i];
+              const style = window.getComputedStyle(el);
+              const fill = style.fill;
+              if (fill && fill !== 'none' && fill !== 'transparent' && style.opacity !== '0' && style.fillOpacity !== '0') {
+                shielded = true;
+                break;
+              }
+            }
+          }
+
+          if (!shielded) {
+            const key = t.text + '_circle';
+            if (!circleCollisionSeen.has(key)) {
+              circleCollisionSeen.add(key);
+              issues.push({
+                type: 'TEXT_CIRCLE_COLLISION',
+                message: `Unshielded circle marker overlaps text "${t.text.slice(0, 25)}"`
+              });
+            }
+          }
+        }
+      });
+    });
+
+    // 5d. Unshielded Text-Polygon Collisions (Arrow tips and geometric polygons intersecting text)
+    const svgPolygons = Array.from(document.querySelectorAll('polygon')).map(poly => {
+      const ctm = poly.getScreenCTM();
+      if (!ctm) return null;
+      const pointsAttr = poly.getAttribute('points') || '';
+      const rawPoints = pointsAttr.trim().split(/[\s,]+/).map(parseFloat);
+      const vertices = [];
+      for (let i = 0; i < rawPoints.length - 1; i += 2) {
+        const x = rawPoints[i], y = rawPoints[i + 1];
+        if (!isNaN(x) && !isNaN(y)) {
+          vertices.push({
+            x: ctm.a * x + ctm.c * y + ctm.e,
+            y: ctm.b * x + ctm.d * y + ctm.f
+          });
+        }
+      }
+      return { el: poly, vertices };
+    }).filter(p => p && p.vertices.length >= 3);
+
+    const polyCollisionSeen = new Set();
+    texts.forEach(t => {
+      svgPolygons.forEach(poly => {
+        const V = poly.vertices;
+        let hit = false;
+        let hitPt = null;
+
+        for (let i = 0; i < V.length; i++) {
+          const p1 = V[i];
+          const p2 = V[(i + 1) % V.length];
+          const clip = clipSegmentAABB(p1.x, p1.y, p2.x, p2.y, t.rect.left, t.rect.top, t.rect.right, t.rect.bottom);
+          if (clip && clip.length >= 3) {
+            hit = true;
+            hitPt = { x: (clip.pEnter.x + clip.pExit.x) / 2, y: (clip.pEnter.y + clip.pExit.y) / 2 };
+            break;
+          }
+        }
+
+        if (!hit) {
+          for (const v of V) {
+            if (v.x >= t.rect.left && v.x <= t.rect.right && v.y >= t.rect.top && v.y <= t.rect.bottom) {
+              hit = true;
+              hitPt = { x: v.x, y: v.y };
               break;
             }
           }
         }
-        if (lineHit) break;
-      }
 
-      if (lineHit) {
-        issues.push({
-          type: 'TEXT_LINE_COLLISION',
-          message: `Unshielded line intersects text "${t.text.slice(0, 25)}"`
-        });
-      }
+        if (hit && hitPt) {
+          const els = document.elementsFromPoint(hitPt.x, hitPt.y);
+          const textIdx = els.indexOf(t.el);
+          const polyIdx = els.indexOf(poly.el);
+
+          let shielded = false;
+          if (textIdx !== -1 && polyIdx !== -1) {
+            for (let i = Math.min(textIdx, polyIdx) + 1; i < Math.max(textIdx, polyIdx); i++) {
+              const el = els[i];
+              const style = window.getComputedStyle(el);
+              const fill = style.fill;
+              if (fill && fill !== 'none' && fill !== 'transparent' && style.opacity !== '0' && style.fillOpacity !== '0') {
+                shielded = true;
+                break;
+              }
+            }
+          }
+
+          if (!shielded) {
+            const key = t.text + '_poly';
+            if (!polyCollisionSeen.has(key)) {
+              polyCollisionSeen.add(key);
+              issues.push({
+                type: 'TEXT_POLYGON_COLLISION',
+                message: `Unshielded polygon/arrow tip intersects text "${t.text.slice(0, 25)}"`
+              });
+            }
+          }
+        }
+      });
     });
 
     // 6. Minimum Font Size Check (< 11px)
@@ -238,7 +631,14 @@ async function auditSvgFile(browser, svgPath, options = {}) {
 
 async function main() {
   const args = process.argv.slice(2);
-  const targetDir = args[0] || 'Folien';
+  const rasterize = args.includes('--rasterize');
+  const filteredArgs = args.filter(a => !a.startsWith('--'));
+
+  let targetDir = filteredArgs[0] || 'Folien';
+  if (!fs.existsSync(targetDir) && fs.existsSync('Folien')) {
+    const match = fs.readdirSync('Folien').find(d => d.startsWith(targetDir));
+    if (match) targetDir = path.join('Folien', match);
+  }
 
   const puppeteer = getPuppeteer();
   const browser = await puppeteer.launch({
@@ -249,7 +649,7 @@ async function main() {
 
   console.log(`\n================================================================`);
   console.log(`  AUTOMATED SVG QUALITY & READABILITY AUDITOR`);
-  console.log(`  Scanning directory: ${targetDir}`);
+  console.log(`  Scanning directory: ${targetDir}${rasterize ? ' (PNG Rasterize ON)' : ' (Fast Mode: in-memory DOM audit)'}`);
   console.log(`================================================================\n`);
 
   function findSvgs(dir) {
@@ -274,13 +674,26 @@ async function main() {
   const allSvgs = findSvgs(targetDir);
   console.log(`Found ${allSvgs.length} SVG files to audit.\n`);
 
+  const CONCURRENCY = 6;
+  const results = [];
+  const startTime = Date.now();
+
+  for (let i = 0; i < allSvgs.length; i += CONCURRENCY) {
+    const chunk = allSvgs.slice(i, i + CONCURRENCY);
+    const chunkResults = await Promise.all(
+      chunk.map(svg => auditSvgFile(browser, svg, { rasterize }))
+    );
+    results.push(...chunkResults);
+  }
+
+  const durationSec = ((Date.now() - startTime) / 1000).toFixed(1);
+
   let defectCount = 0;
-  for (const svg of allSvgs) {
-    const rel = path.relative(process.cwd(), svg);
-    const result = await auditSvgFile(browser, svg);
+  for (const result of results) {
+    const rel = path.relative(process.cwd(), result.path);
     if (result.issues && result.issues.length > 0) {
       defectCount++;
-      console.log(`✗ ${rel} (Aspect: ${result.aspectRatio}:1):`);
+      console.log(`âœ— ${rel} (Aspect: ${result.aspectRatio}:1):`);
       result.issues.forEach(iss => {
         console.log(`    [${iss.type}] ${iss.message}`);
       });
@@ -291,10 +704,10 @@ async function main() {
 
   console.log(`\n================================================================`);
   console.log(`  ZUSAMMENFASSUNG SVG-AUDIT`);
-  console.log(`  Geprüfte SVGs: ${allSvgs.length}`);
-  console.log(`  SVGs mit Auffälligkeiten: ${defectCount}`);
+  console.log(`  GeprÃ¼fte SVGs: ${allSvgs.length} in ${durationSec}s`);
+  console.log(`  SVGs mit AuffÃ¤lligkeiten: ${defectCount}`);
   console.log(`================================================================\n`);
-  process.exit(0);
+  process.exit(defectCount > 0 ? 1 : 0);
 }
 
 main().catch(err => {

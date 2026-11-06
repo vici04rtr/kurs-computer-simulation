@@ -27,33 +27,34 @@ Dieses Kapitel umfasst die folgenden Abschnitte:
 
 ---
 
-### Showcase & Peer Review: Termin 08 (Kontinuierliche Dynamik & RK4)
+### Live-Showcase & Code-Defense: Termin 08
+
+Präsentation der Hausübung aus Termin 08 (**Stufe 1: Basisaufgabe** + **Stufe 2: Track A oder B**, [Aufgabenblatt 08](../../Uebungen/Termin_08_DGL_und_SFunctions/Aufgabenblatt.md)):
 
 <div class="columns">
 <div class="two">
 
-**Track A: DC-Servomotor (Industrie)**
-- Zustandsraum-Modellierung ($i, \omega, \theta$)
-- 4-stufige RK4-Integration ($h = 1\,\text{ms}$)
-- PI-Lageregelung mit Lastsprung
+#### Stufe 2 – Track A: DC-Servomotor (Industrie)
+- Zustandsraum-Modellierung ($i, \omega, \theta, T_{\text{Cu}}$)
+- Verfahrensvergleich Euler vs. Heun vs. RK4
+- PID-Lageregelung mit Lastsprung & Derating
 - Anti-Windup Clamping gegen Überschwingen
-- *Peer Review:* Verhalten bei Aktor-Sättigung
+- *Code-Defense:* Verhalten bei Aktor-Sättigung
 
 </div>
 <div class="two">
 
-**Track B: SpaceX Falcon Hop (Game)**
+#### Stufe 2 – Track B: SpaceX Falcon Hop (Game)
 - Raketen-Schwebeflug & dynamische Landung
 - Gekoppelte Translation & Drehträgheit
 - Kaskadierter PID & Schubvektor-Gimbal
 - Balancer gegen Inverted-Pendulum-Kippen
-- *Peer Review:* RK4-Stabilität & Regelparameter
+- *Code-Defense:* RK4-Stabilität & Regelparameter
 
 </div>
 </div>
 
-> [!NOTE]
-> **Showcase & Plenumsdiskussion:** Live-Demonstration beider Tracks auf der Beamer-Bühne. Fokus: Anti-Windup Clamping unter Lastsprung und RK4-Schrittweitenwahl. Details: [Aufgabenblatt Termin 08](../../Uebungen/Termin_08_DGL_und_SFunctions/Aufgabenblatt.md).
+> **Code-Defense (Säule 2b, 20 %):** Live-Demonstration am Beamer. Fokus: Anti-Windup Clamping unter Lastsprung und RK4- vs. Euler-Stabilitätsgrenze.
 
 ---
 
@@ -63,9 +64,24 @@ Dieses Kapitel umfasst die folgenden Abschnitte:
 
 Dieser Abschnitt umfasst die folgenden Inhalte:
 
+- **Brücke zu Termin 08:** Warum Zeitschritt-Solver bei Logistik versagen
 - **Definition** diskreter dynamischer Modelle
 - **Abgrenzung** zu kontinuierlichen Modellen
 - **Typische Anwendungsbeispiele** wie Warteschlangensysteme
+
+---
+
+### Rückblick & Brücke: Wo stehen wir in der Vorlesung?
+
+In **Termin 08** haben wir kontinuierliche Systeme (Motoren, Regelkreise) mit festen Zeitschritten $\Delta t = 1\,\text{ms}$ integriert – warum scheitert dieser Ansatz bei einer ganzen Fabrik oder Lackierstraße?
+
+- **Rückblick auf Termin 08 (Zeitgesteuerte ODE-Integration):**
+  - Bei einem Elektromotor ändern sich Strom $i(t)$ und Drehzahl $\omega(t)$ in jeder Mikrosekunde stetig – ein festes Zeitraster $\Delta t$ ist hier ideal.
+- **Der Engpass heute (Leerlauf-Explosion bei seltenen Ereignissen):**
+  - In einer Produktionslinie oder Warteschlange passiert oft minutenlang nichts, bis plötzlich zu einem krummen Zeitpunkt $t = 14{,}382\,\text{s}$ ein Werkstück eintrifft oder eine Maschine ausfällt.
+  - Ein kontinuierlicher $\Delta t$-Solver würde Millionen nutzloser Leerschritte rechnen und den exakten Ereigniszeitpunkt trotzdem verfehlen!
+- **Einordnung ins große Ganze (3. Modellart: Discrete Event Simulation):**
+  - Statt die Zeit in feste Scheiben $\Delta t$ zu schneiden, springen wir heute über eine **Ereignis-Warteschlange (`PriorityQueue`)** direkt von Ereignis zu Ereignis und koppeln dies mit **Monte-Carlo-Simulationsläufen** (Parallelisierung aus Termin 06!).
 
 ---
 
@@ -693,7 +709,7 @@ plot.Add.Bars(bars);
 </div>
 <div class="two">
 
-![h:380px](./Illustrationen/Queue_Wartezeit_Histogramm.png)
+![](./Illustrationen/Queue_Wartezeit_Histogramm.png)
 
 </div>
 </div>
@@ -734,7 +750,7 @@ plot.Add.Bars(bars);
 - Kinetik als kontinuierlicher Geburts- und Todesprozess mit Raten $\lambda$ (Zulauf) und $\mu$ (Ablauf).
 - Stationäre Zustandswahrscheinlichkeit: $P_k = (1 - \rho)\rho^k \implies \bar{L}_q = \frac{\rho^2}{1-\rho}, \quad \bar{W}_q = \frac{\rho}{\mu - \lambda}$.
 
-![w:920 center](./Diagramme/MM1_Warteschlange_Kinetik.svg)
+![](./Diagramme/MM1_Warteschlange_Kinetik.svg)
 
 ---
 
@@ -852,14 +868,14 @@ Die folgenden beiden Diagramme zeigen den Verlauf der Wahrscheinlichkeitsdichtef
 
 **Wahrscheinlichkeitsdichtefunktion**
 
-![width:395](./Illustrationen/ExpDichteF.svg)
+![](./Illustrationen/ExpDichteF.svg)
 
 </div>
 <div>
 
 **Kumulative Verteilungsfunktion**
 
-![width:395](./Illustrationen/ExpVerteilungF.svg)
+![](./Illustrationen/ExpVerteilungF.svg)
 
 </div>
 </div>
@@ -902,7 +918,7 @@ Die **Inversionsmethode** (Inverse Transform Sampling) ist ein Verfahren zur Erz
 </div>
 <div class="two">
 
-![w:500](./Diagramme/Inversionsmethode_Prinzip.tikz.svg)
+![](./Diagramme/Inversionsmethode_Prinzip.tikz.svg)
 
 </div>
 </div>
@@ -1270,7 +1286,7 @@ Monte-Carlo-Replikationen sind vollständig unabhängig voneinander (*embarrassi
 </div>
 <div>
 
-![h:400px](./Illustrationen/MonteCarloParallel.jpg)
+![](./Illustrationen/MonteCarloParallel.jpg)
 
 </div>
 </div>
@@ -1453,12 +1469,14 @@ In der Praxis existieren kontinuierliche Physik und diskrete Ereignisse selten g
 
 ---
 
-### Hands-on Labor: Termin 09 – Pick your Track!
+### Hausübung Termin 09: Diskrete Ereignissimulation (DES)
+
+**Stufe 1 (Basisaufgabe `1.1`–`1.3` für alle Teams auf `DiscreteEventSimulation.sln`):** Wartepuffer $K$ & Little's Gesetz, Box-Muller Log-Normal & Monte-Carlo ([Aufgabenblatt 09](../../Uebungen/Termin_09_Diskrete_Systeme_DES/Aufgabenblatt.md)) $\to$ **Stufe 2 (Vertiefung – Wahl: Track A ODER Track B, 10 Pkt.):**
 
 <div class="columns">
 <div class="two">
 
-**Track A: Lackierstraße M/M/c (Industrie)**
+#### Stufe 2 – Track A: Lackierstraße M/M/c (Industrie)
 - **Szenario:** Automobil-Lackierstraße ($c = 3$)
 - Puffer mit Blocking ($K = 25$) & Abweisung
 - Prioritätswarteschlange (Express vs. Standard)
@@ -1468,7 +1486,7 @@ In der Praxis existieren kontinuierliche Physik und diskrete Ereignisse selten g
 </div>
 <div class="two">
 
-**Track B: Theme Park Queue (Game)**
+#### Stufe 2 – Track B: Theme Park Queue (Game)
 - **Szenario:** Achterbahn-Warteschlangen-Rush
 - Kundenströme mit stochastischen Spitzen
 - VIP-Fastpass-Prio mit `PriorityQueue`
@@ -1477,9 +1495,5 @@ In der Praxis existieren kontinuierliche Physik und diskrete Ereignisse selten g
 
 </div>
 </div>
-
-> [!TIP]
-> **Arbeitsauftrag:** Bearbeiten Sie im 2er-Team **GENAU EINEN** der beiden Tracks!
-> Aufgabenstellung & Vorlagen: [Aufgabenblatt Termin 09](../../Uebungen/Termin_09_Diskrete_Systeme_DES/Aufgabenblatt.md).
 
 

@@ -64,20 +64,20 @@ flowchart TD
 Jedes Aufgabenblatt enthält standardmäßig:
 1. *Metadaten & Terminstruktur* (Termin, Thema, ECTS-Workload, Zeitbudget)
 2. *Lernziele (ILOs)*
-3. *Stufe A: In-Class Sprint (60 min)* (Gemeinsamer Kern, lauffähiges MVP)
-4. *Stufe B: Pick your Track* (Track A Industrie ODER Track B Game – freie Wahl!)
+3. *Stufe 1: Basisaufgabe (ca. 60 min)* (Gemeinsames Fundament auf der C#-Projektvorlage, lauffähiges MVP)
+4. *Stufe 2: Vertiefungsaufgabe / Pick your Track* (Track A Industrie ODER Track B Game – freie Wahl!)
 5. *Akzeptanzkriterien & Definition of Done*
 6. *Recherche-Box* (Doku-Links, gezielte englische Suchbegriffe)
 7. *Vibe-Coding Prompt-Vorlagen*
-8. *🔍 Peer-Review-Leitfragen für das Auditorium*
+8. *🔍 Leitfragen für den Live-Showcase & Code-Defense (Säule 2b)*
 
-### Arbeitspaket 2: Moodle-Quizzes im GIFT-Format
+### Arbeitspaket 2: Moodle-Quizzes (10-Varianten-Moodle-XML & Blueprints)
 - **Worker M1:**
-  - `Moodle/Quiz_01_Termin_03/` (Pixel, Stride, FDM, CFL-Bedingung)
-  - `Moodle/Quiz_02_Termin_05/` (Canvas, ScottPlot 5, 3D-Szenengraph-Matrizen)
-  - `Moodle/Quiz_03_Termin_08/` (Amdahl, Cholesky, RK4, Anti-Windup)
-  - `Moodle/Quiz_04_Termin_10/` (DES, Little's Gesetz, Zero-Crossing, Zeno)
-  Jedes Quiz enthält Markdown zur Einsicht und `.gift.txt` für den 1-Klick-Import in Moodle.
+  - `Moodle/Quiz_01_Termin_03_Grundlagen_und_Pixel/` (Kap. 00–02: Euler, Pixel, Stride, FDM, CFL-Bedingung)
+  - `Moodle/Quiz_02_Termin_05_Vektor_und_Diagramme/` (Kap. 03–04: Canvas, Koordinatentransformation, DIN-Bemaßung, ScottPlot 5, Welford, MSAGL)
+  - `Moodle/Quiz_03_Termin_08_3D_Multithreading_Statik/` (Kap. 05–07: 3D-Szenengraph-Matrizen, TPL & Amdahl, Statische FEM & Cholesky)
+  - `Moodle/Quiz_04_Termin_10_DGL_und_DES/` (Kap. 08–09: S-Functions, RK4, Anti-Windup, DES, Inversionsmethode, Little's Gesetz)
+  Jedes finalisierte Quiz enthält 10 Varianten (`XML_Tests/Test_01_Vorbereitung.xml` bis `Test_03_Vorbereitung.xml` + `Test_04_Pruefung.xml` bis `Test_10_Pruefung.xml`), eine Master-XML sowie `Uebersicht_10_Moodle_Tests.md` (generiert über `Skripte/generate_moodle_xml_quiz_0X.js`).
 
 ### Arbeitspaket 3: MARP-Folienüberarbeitung
 - **Worker F1 (Kapitel 00–05) & Worker F2 (Kapitel 06–11):**

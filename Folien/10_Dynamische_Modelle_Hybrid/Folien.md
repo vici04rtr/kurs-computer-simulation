@@ -25,33 +25,34 @@ Dieses Kapitel beinhaltet Folgendes:
 
 ---
 
-### Showcase & Peer Review: Termin 09 (Diskrete Systeme & DES)
+### Live-Showcase & Code-Defense: Termin 09
+
+Präsentation der Hausübung aus Termin 09 (**Stufe 1: Basisaufgabe** + **Stufe 2: Track A oder B**, [Aufgabenblatt 09](../../Uebungen/Termin_09_Diskrete_Systeme_DES/Aufgabenblatt.md)):
 
 <div class="columns">
 <div class="two">
 
-**Track A: Lackierstraße M/M/c (Industrie)**
+#### Stufe 2 – Track A: Lackierstraße M/M/c (Industrie)
 - Automobil-Lackierstraße mit 3 Kabinen
 - Puffer mit Blocking ($K = 25$) & Abweisung
 - Prioritätswarteschlange (Express vs. Standard)
 - Numerische Verifikation via Little's Gesetz
-- *Peer Review:* Welford-Varianz & Konfidenz
+- *Code-Defense:* Welford-Varianz & Konfidenz
 
 </div>
 <div class="two">
 
-**Track B: Theme Park Queue (Game)**
+#### Stufe 2 – Track B: Theme Park Queue (Game)
 - Achterbahn-Warteschlangen-Rush
 - Stochastische Peaks & Zwischenankünfte
 - VIP-Fastpass mit `PriorityQueue`
 - Interaktives Dashboard gegen Queue-Kollaps
-- *Peer Review:* Stochastische Kausalität & Seeds
+- *Code-Defense:* Stochastische Kausalität & Seeds
 
 </div>
 </div>
 
-> [!NOTE]
-> **Showcase & Plenumsdiskussion:** Live-Demonstration beider Tracks auf der Beamer-Bühne. Fokus: Little's Gesetz, Pufferüberlauf-Wahrscheinlichkeiten und Welford-Akkumulation. Details: [Aufgabenblatt Termin 09](../../Uebungen/Termin_09_Diskrete_Systeme_DES/Aufgabenblatt.md).
+> **Code-Defense (Säule 2b, 20 %):** Live-Demonstration am Beamer. Fokus: Little's Gesetz ($\bar{L} = \lambda_{\text{eff}}\bar{W}$), Pufferüberlauf und Monte-Carlo-Konfidenzintervalle.
 
 ---
 
@@ -61,10 +62,23 @@ Dieses Kapitel beinhaltet Folgendes:
 
 Dieser Abschnitt beinhaltet Folgendes:
 
+- Brücke & Synthese: Verschmelzung von Termin 08 (ODE) und Termin 09 (Events).
 - Mathematische Modellierung der Freiflugphase (kontinuierlich).
 - Modellierung des Aufpralls als diskretes Ereignis.
 - Herleitung der analytischen Lösung für die hybride Trajektorie.
 - Simulation der Abfolge von kontinuierlichen Phasen und diskreten Sprüngen.
+
+---
+
+### Rückblick & Brücke: Wo stehen wir in der Vorlesung?
+
+In **Termin 08** haben wir rein kontinuierliche Flüsse (ODEs) und in **Termin 09** rein diskrete Ereignissprünge (DES) getrennt voneinander betrachtet – doch wie verhält sich ein realer **Digitaler Zwilling** in der Automatisierungstechnik?
+
+- **Warum weder Termin 08 noch Termin 09 allein ausreichen:**
+  - Eine reale Hydraulikpresse, ein Roboter mit Greifkontakt oder ein geschalteter Stromrichter bewegt sich zwar **kontinuierlich nach Differentialgleichungen (Termin 08)**, trifft aber plötzlich auf **harte mechanische Anschläge, Sicherheits-Lichtschranken, Ventil-Umschaltungen oder digitale SPS-Abtasttakte (Termin 09)**!
+  - Ein reiner RK4-Solver aus Termin 08 überspringt im festen Zeitschritt $\Delta t$ den exakten Aufprallmoment (**Tunneling-Fehler** / Energie-Explosion).
+- **Einordnung ins große Ganze (4. Modellart & Krönung des Kurses):**
+  - Heute verschmelzen wir **kontinuierliche Integration (T08)** und **diskrete Ereignisbehandlung (T09)** zur **Hybriden Simulation** mit **Zero-Crossing-Bisektion** und variablen Abtastzeiten.
 
 ---
 
@@ -83,7 +97,7 @@ Das System wird durch folgende Annahmen vereinfacht:
 </div>
 <div class="four">
 
-![w:500](./Diagramme/BouncingBall_Zeit-Positions-Diagramm.tikz.svg)
+![](./Diagramme/BouncingBall_Zeit-Positions-Diagramm.tikz.svg)
 
 </div>
 </div>
@@ -109,7 +123,7 @@ $$ \dot{y} = v \text{ und } \dot{v} = -g $$
 </div>
 <div>
 
-![w:500](./Diagramme/BouncingBall_Flugparabel.tikz.svg)
+![](./Diagramme/BouncingBall_Flugparabel.tikz.svg)
 
 </div>
 </div>
@@ -131,7 +145,7 @@ Diese Bedingungen definieren ein sogenanntes *Nulldurchgangsereignis*, bei dem d
 </div>
 <div>
 
-![w:500](./Diagramme/BouncingBall_Aufprall_Bedingung.tikz.svg)
+![](./Diagramme/BouncingBall_Aufprall_Bedingung.tikz.svg)
 
 </div>
 </div>
@@ -154,7 +168,7 @@ $$ v(t_e^+) = -e \cdot v(t_e^-) $$
 </div>
 <div>
 
-![w:500](./Diagramme/BouncingBall_Aufprall_Zustandsaenderung.tikz.svg)
+![](./Diagramme/BouncingBall_Aufprall_Zustandsaenderung.tikz.svg)
 
 </div>
 </div>
@@ -181,7 +195,7 @@ Diese Gleichungen gelten, solange der Ball sich in der Luft befindet ($y(t) > 0$
 </div>
 <div>
 
-![w:500](./Diagramme/BouncingBall_Freiflug_Position_Geschwindigkeit.tikz.svg)
+![](./Diagramme/BouncingBall_Freiflug_Position_Geschwindigkeit.tikz.svg)
 
 </div>
 </div>
@@ -203,7 +217,7 @@ Dies ist eine quadratische Gleichung für $\Delta t = (t_e - t_0)$. Die positive
 </div>
 <div>
 
-![w:500](./Diagramme/BouncingBall_Aufprall_Zeitpunkt.tikz.svg)
+![](./Diagramme/BouncingBall_Aufprall_Zeitpunkt.tikz.svg)
 
 </div>
 </div>
@@ -369,7 +383,7 @@ Dieses Signal existiert und ändert sich kontinuierlich über die Zeit.
 </div>
 <div>
 
-![w:500](./Diagramme/DigitalerSensor_Eingangssignal.tikz.svg)
+![](./Diagramme/DigitalerSensor_Eingangssignal.tikz.svg)
 
 </div>
 </div>
@@ -395,7 +409,7 @@ $$ U_{sens}(t) = U(t_k) \quad \text{für} \quad t_k \le t < t_{k+1} $$
 </div>
 <div>
 
-![w:500](./Diagramme/DigitalerSensor_Abtastung.tikz.svg)
+![](./Diagramme/DigitalerSensor_Abtastung.tikz.svg)
 
 </div>
 </div>
@@ -418,7 +432,7 @@ Im Gegensatz zum Bouncing Ball sind die Ereignisse hier **zeitgesteuert** (perio
 </div>
 <div>
 
-![w:500](./Diagramme/DigitalerSensor_Gesamtsystem.tikz.svg)
+![](./Diagramme/DigitalerSensor_Gesamtsystem.tikz.svg)
 
 </div>
 </div>
@@ -443,7 +457,7 @@ Dies führt zu einem **ereignisgesteuerten hybriden System**, bei dem die Abtast
 </div>
 <div>
 
-![w:500](./Diagramme/DigitalerSensor_VariableAbtastrate_Signal.tikz.svg)
+![](./Diagramme/DigitalerSensor_VariableAbtastrate_Signal.tikz.svg)
 
 </div>
 </div>
@@ -483,7 +497,7 @@ Die variable Abtastlogik nutzt $c(t)$, um die Abtastrate anzupassen:
 </div>
 <div>
 
-![w:500](./Diagramme/DigitalerSensor_Eingangs_und_Steuersignal.tikz.svg)
+![](./Diagramme/DigitalerSensor_Eingangs_und_Steuersignal.tikz.svg)
 
 </div>
 </div>
@@ -506,7 +520,7 @@ Die variable Abtastlogik nutzt $c(t)$, um die Abtastrate anzupassen:
 </div>
 <div>
 
-![w:500](./Diagramme/DigitalerSensor_VariableAbtastung.tikz.svg)
+![](./Diagramme/DigitalerSensor_VariableAbtastung.tikz.svg)
 
 </div>
 </div>
@@ -1039,7 +1053,7 @@ Der Solver nutzt einen iterativen Prozess, um den genauen Zeitpunkt eines Ereign
 </div>
 <div>
 
-![h:440px](./Diagramme/Nulldurchgang.svg)
+![](./Diagramme/Nulldurchgang.svg)
 
 </div>
 </div>
@@ -1069,7 +1083,7 @@ while (zeroCrossingValue > Threshold && iteration++ < Limit) {
 - Nulldurchgang erfordert Vorzeichenwechsel (Bolzano): $\operatorname{sgn}(z(t_a)) \neq \operatorname{sgn}(z(t_b)) \iff z(t_a) \cdot z(t_b) \le 0$.
 - Echte Bisektion halbiert das Suchintervall; naive Schritt-Halbierung verfehlt Nullstellen bei $t > t_0 + 0{,}5\Delta t$.
 
-![w:920 center](./Diagramme/ZeroCrossing_Bisektion_Intervall.svg)
+![](./Diagramme/ZeroCrossing_Bisektion_Intervall.svg)
 
 ---
 
@@ -1120,7 +1134,7 @@ Das Flussdiagramm verdeutlicht die Entscheidungslogik des Solvers bei der Ereign
 </div>
 <div>
 
-![h:460px](./Diagramme/Solver_Logik.svg)
+![](./Diagramme/Solver_Logik.svg)
 
 </div>
 </div>
@@ -1597,12 +1611,14 @@ Das gesamte Methodenspektrum steht nun zur Verfügung:
 
 ---
 
-### Hands-on Labor: Termin 10 – Pick your Track!
+### Hausübung Termin 10: Hybride Dynamik, Bisektion & Zeno
+
+**Stufe 1 (Basisaufgabe `1.1`–`1.3` für alle Teams auf `HybridZeroCrossing.sln`):** Festschritt vs. Bisektion, Zeno-Wakeup & Energie-Telemetrie ([Aufgabenblatt 10](../../Uebungen/Termin_10_Hybride_Dynamik_Synthese/Aufgabenblatt.md)) $\to$ **Stufe 2 (Vertiefung – Wahl: Track A ODER Track B, 10 Pkt.):**
 
 <div class="columns">
 <div class="two">
 
-**Track A: VIBN Pneumatikzylinder (Industrie)**
+#### Stufe 2 – Track A: VIBN Pneumatikzylinder (Industrie)
 - **Szenario:** Virtuelle Inbetriebnahme Taktvorschub
 - Kontinuierliche Kammer-Druckdynamik ($p_1, p_2$)
 - Anschlag bei $x_{\max}$ mit Zero-Crossing-Bisektion
@@ -1612,7 +1628,7 @@ Das gesamte Methodenspektrum steht nun zur Verfügung:
 </div>
 <div class="two">
 
-**Track B: Arcade Pinball Wizard (Game)**
+#### Stufe 2 – Track B: Arcade Pinball Wizard (Game)
 - **Szenario:** Flipper-Kugel-Dynamik & Bumper
 - Stetige Gravitations- & Rampentrajektorie
 - Bisektion verhindert Hindernis-Durchtunneln
@@ -1621,9 +1637,5 @@ Das gesamte Methodenspektrum steht nun zur Verfügung:
 
 </div>
 </div>
-
-> [!TIP]
-> **Arbeitsauftrag:** Bearbeiten Sie im 2er-Team **GENAU EINEN** der beiden Tracks!
-> Aufgabenstellung & Vorlagen: [Aufgabenblatt Termin 10](../../Uebungen/Termin_10_Hybride_Dynamik_Synthese/Aufgabenblatt.md).
 
 

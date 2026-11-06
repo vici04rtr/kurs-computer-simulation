@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 270 420" width="270" height="420">
+  <defs>
+    <style>
+      .hdr { font-family: 'Segoe UI', Arial, sans-serif; font-size: 14.5px; font-weight: bold; fill: #004B96; text-anchor: middle; }
+      .sub { font-family: 'Segoe UI', Arial, sans-serif; font-size: 13px; fill: #475569; text-anchor: middle; }
+      .lbl { font-family: 'Segoe UI', Arial, sans-serif; font-size: 13px; font-weight: bold; text-anchor: middle; }
+      .desc { font-family: 'Segoe UI', Arial, sans-serif; font-size: 13px; fill: #334155; text-anchor: middle; }
+      .dim { font-family: 'Segoe UI', Arial, sans-serif; font-size: 13px; fill: #0369a1; font-weight: bold; }
+    </style>
+  </defs>
+
+  <rect width="270" height="420" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+  <text x="135" y="24" class="hdr">Bounding Box &amp; Offsets</text>
+  <text x="135" y="42" class="sub">Vom Extremwert zur Zeichenfläche</text>
+
+  <!-- Outer Canvas Box -->
+  <g transform="translate(15, 54)">
+    <rect width="240" height="220" rx="6" fill="#ffffff" stroke="#0284c7" stroke-width="2" />
+    <text x="120" y="18" class="dim" style="text-anchor: middle;">Canvas Viewport</text>
+
+    <!-- Margin Inset -->
+    <rect x="20" y="26" width="200" height="176" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="4,3" />
+    <text x="120" y="40" class="dim" style="font-size: 11.5px; text-anchor: middle; fill: #64748b;">Nutzfläche (W_draw × H_draw)</text>
+
+    <!-- Centered Truss Bounding Box -->
+    <g transform="translate(58, 65)">
+      <rect width="124" height="105" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="2,2" />
+      <polygon points="12,90 112,90 62,18" fill="none" stroke="#1d4ed8" stroke-width="2.5" />
+      <circle cx="12" cy="90" r="4" fill="#1e40af" />
+      <circle cx="112" cy="90" r="4" fill="#1e40af" />
+      <circle cx="62" cy="18" r="4" fill="#1e40af" />
+      <rect x="36" y="-6" width="52" height="16" rx="3" fill="#ffffff" stroke="#93c5fd" stroke-width="1" />
+      <text x="62" y="6" font-family="'Segoe UI', Arial, sans-serif" font-size="11.5" font-weight="bold" fill="#1e40af" text-anchor="middle">(x_i, y_i)</text>
+    </g>
+
+    <!-- Randabstand (mit Schutz-Pill) -->
+    <g transform="translate(18, 107)">
+      <rect width="40" height="18" rx="3" fill="#ffffff" stroke="#fde68a" stroke-width="1" />
+      <text x="20" y="13" class="dim" style="font-size: 11.5px; fill: #b45309; text-anchor: middle;">margin</text>
+    </g>
+    <g transform="translate(182, 107)">
+      <rect width="40" height="18" rx="3" fill="#ffffff" stroke="#fde68a" stroke-width="1" />
+      <text x="20" y="13" class="dim" style="font-size: 11.5px; fill: #b45309; text-anchor: middle;">margin</text>
+    </g>
+  </g>
+
+  <!-- Formula Summary Card -->
+  <g transform="translate(15, 286)">
+    <rect width="240" height="120" rx="6" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5" />
+    <text x="120" y="24" class="lbl" style="fill: #15803d;">Modell- &amp; Zeichenmaße</text>
+    <text x="120" y="48" class="desc" style="font-weight: bold; fill: #166534;">W_world = X_max - X_min</text>
+    <text x="120" y="70" class="desc" style="font-weight: bold; fill: #166534;">H_world = Y_max - Y_min</text>
+    <text x="120" y="94" class="desc" style="font-weight: bold; fill: #047857;">W_draw = W_canvas - 2·margin</text>
+  </g>
+</svg>

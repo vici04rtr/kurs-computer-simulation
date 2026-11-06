@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 270 420" width="270" height="420">
+  <defs>
+    <style>
+      .hdr { font-family: 'Segoe UI', Arial, sans-serif; font-size: 14px; font-weight: bold; fill: #004B96; text-anchor: middle; }
+      .sub { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; fill: #475569; text-anchor: middle; }
+      .lbl { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; font-weight: bold; }
+      .desc { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11.5px; fill: #334155; }
+      .fml { font-family: 'Consolas', monospace; font-size: 11.5px; font-weight: bold; }
+      .axis { font-family: 'Cambria Math', serif; font-size: 11.5px; font-weight: bold; }
+    </style>
+  </defs>
+
+  <!-- Background Card -->
+  <rect width="270" height="420" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+  <text x="135" y="19" class="hdr">Viewport⁻¹ (Schicht 2)</text>
+  <text x="135" y="38" class="sub">Vom Canvas-Pixel zum Welt-Modell</text>
+
+  <!-- 1. Canvas Space (Ruhende Zeichenebene) -->
+  <g transform="translate(15, 48)">
+    <rect width="240" height="136" rx="6" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5" />
+    <rect x="0" y="0" width="240" height="20" rx="6" fill="#dbeafe" />
+    <text x="10" y="15" class="lbl" style="fill: #1e40af;">1. Ruhender Canvas (Pixel [px])</text>
+
+    <!-- Virtual Canvas Sheet -->
+    <rect x="10" y="26" width="82" height="98" rx="3" fill="#ffffff" stroke="#3b82f6" stroke-width="1.2" stroke-dasharray="3,2" />
+    
+    <!-- Origin (0,0) -->
+    <circle cx="10" cy="26" r="2.5" fill="#1e40af" />
+    <text x="14" y="36" class="desc" style="font-size: 11.5px; fill: #1e40af; font-weight: bold;">(0,0)</text>
+
+    <!-- Truss on Canvas -->
+    <polygon points="24,94 86,94 55,58" fill="none" stroke="#2563eb" stroke-width="1.5" />
+    <circle cx="24" cy="94" r="2.5" fill="#1d4ed8" />
+    <circle cx="86" cy="94" r="2.5" fill="#1d4ed8" />
+    <circle cx="55" cy="58" r="3" fill="#dc2626" />
+    <text x="56" y="48" class="fml" style="font-size: 11.5px; fill: #dc2626; text-anchor: middle;">P_unzoom</text>
+    <text x="55" y="116" class="desc" style="font-size: 11.5px; fill: #2563eb; text-anchor: middle;">WPF-Shapes</text>
+
+    <!-- Text description right -->
+    <g transform="translate(104, 28)">
+      <text x="0" y="16" class="fml" style="fill: #1e40af;">P_unzoom (x_u, y_u)</text>
+      <text x="0" y="38" class="desc" style="fill: #d97706;">Offset abziehen:</text>
+      <text x="0" y="56" class="fml" style="fill: #1e40af;">x_u - x_off</text>
+      <text x="0" y="74" class="fml" style="fill: #1e40af;">y_u - y_off</text>
+      <text x="0" y="94" class="desc" style="font-size: 11.5px; fill: #64748b;">+Y nach unten</text>
+    </g>
+  </g>
+
+  <!-- Transition Arrow Viewport^-1 -->
+  <g transform="translate(15, 187)">
+    <line x1="38" y1="0" x2="38" y2="24" stroke="#16a34a" stroke-width="2" />
+    <polygon points="38,28 34,21 42,21" fill="#16a34a" />
+    <rect x="48" y="2" width="194" height="22" rx="4" fill="#ffffff" stroke="#86efac" stroke-width="1" />
+    <text x="145" y="17" class="fml" style="font-size: 11.5px; fill: #15803d; text-anchor: middle;">Skalierung 1/s &amp; Y-Spiegelung</text>
+  </g>
+
+  <!-- 2. World Space (Physikalischer Modellraum) -->
+  <g transform="translate(15, 218)">
+    <rect width="240" height="136" rx="6" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5" />
+    <rect x="0" y="0" width="240" height="20" rx="6" fill="#dcfce7" />
+    <text x="10" y="15" class="lbl" style="fill: #15803d;">2. World-Raum (Meter [m])</text>
+
+    <!-- World Axis Frame (Y UPWARDS) -->
+    <g transform="translate(14, 114)">
+      <!-- X-Axis -->
+      <line x1="0" y1="0" x2="62" y2="0" stroke="#16a34a" stroke-width="1.5" />
+      <polygon points="66,0 60,-3 60,3" fill="#16a34a" />
+      <text x="46" y="-8" class="axis" style="fill: #15803d;">+X_w</text>
+
+      <!-- Y-Axis (UPWARDS!) -->
+      <line x1="0" y1="0" x2="0" y2="-76" stroke="#16a34a" stroke-width="1.5" />
+      <polygon points="0,-80 -3,-74 3,-74" fill="#16a34a" />
+      <text x="6" y="-68" class="axis" style="fill: #15803d;">+Y_w</text>
+
+      <!-- Truss Model in World -->
+      <polygon points="8,0 48,0 28,-42" fill="none" stroke="#15803d" stroke-width="1.5" />
+      <circle cx="8" cy="0" r="2.5" fill="#166534" />
+      <circle cx="48" cy="0" r="2.5" fill="#166534" />
+      <circle cx="28" cy="-42" r="3" fill="#dc2626" />
+      <text x="28" y="-50" class="fml" style="font-size: 11.5px; fill: #dc2626; text-anchor: middle;">P_world</text>
+      <text x="28" y="14" class="desc" style="font-size: 11.5px; fill: #166534; text-anchor: middle;">Physik</text>
+    </g>
+
+    <!-- Text description right -->
+    <g transform="translate(104, 28)">
+      <text x="0" y="16" class="fml" style="fill: #15803d;">P_world (x_w, y_w)</text>
+      <text x="0" y="38" class="desc" style="font-weight: bold; fill: #166534;">Ingenieur-System:</text>
+      <text x="0" y="56" class="desc" style="fill: #15803d;">X startet bei X_min</text>
+      <text x="0" y="74" class="desc" style="fill: #15803d;">Y startet bei Y_max</text>
+      <text x="0" y="94" class="desc" style="font-size: 11.5px; fill: #166534; font-weight: bold;">+Y_w zeigt nach OBEN</text>
+    </g>
+  </g>
+
+  <!-- Formula Card (Footer) -->
+  <rect x="15" y="362" width="240" height="48" rx="5" fill="#ffffff" stroke="#86efac" stroke-width="1.2" />
+  <text x="135" y="380" class="fml" style="fill: #15803d; text-anchor: middle;">x_w = X_min + (x_u - x_off) / s</text>
+  <text x="135" y="400" class="fml" style="fill: #15803d; text-anchor: middle;">y_w = Y_max - (y_u - y_off) / s</text>
+</svg>

@@ -153,7 +153,9 @@ public partial class MainWindow : Window
             _upperLine.Y = upper;
             _lowerLine.Y = lower;
 
+
             // Anomalie-Prüfung & Entprellung (Haltezeit 25 Ticks = 0.5s)
+
             bool isAnomaly = _welford.IsAnomaly(signal, 3.0);
             if (isAnomaly)
             {

@@ -1,0 +1,105 @@
+// ==============================================================================
+// Moodle GIFT Quiz 03 (Zu Beginn von Termin 8): 3D-Visualisierung, Multithreading & Statische Fachwerke
+// Lehrveranstaltung: Systemsimulation / Digitaler Zwilling (FH OÖ, Campus Wels)
+// Geprüfter Stoff (Rückwärts-Kausalität): Kapitel 05, 06, 07 (Termin 05, 06 & 07)
+// Umfang: 8 Fragen (3 Numerisch = 5.0 P., 3 Single-Choice = 3.0 P., 2 Multiple-Select = 2.0 P.) -> 10.0 Punkte
+// ==============================================================================
+
+$CATEGORY: $course$/Quiz_03_3D_Multithreading_Statik
+
+::Q3_1_Amdahl_Speedup_Berechnung::[markdown]Ein simulationsgestützter Berechnungsalgorithmus benötigt für einen Zeitschritt auf einem einzelnen Prozessorkern genau $100\,\mathrm\{ms\}$. Eine Profiling-Analyse ergibt, dass $20\,\%$ dieser Laufzeit auf zwingend sequentielle Vorbereitungs-, Dateizugriffs- und UI-Synchronisationsroutinen entfallen ($s \= 0{,}20$). Der verbleibende Anteil von $80\,\%$ ($p \= 0{,}80$) lässt sich ohne Kommunikationsverlust parallelisieren.
+
+Berechnen Sie den **theoretisch maximal erreichbaren Gesamt-Speedup $S$** bei Ausführung des Algorithmus auf einer Workstation mit **$N \= 4$ identischen Prozessorkernen**. *(Geben Sie den Beschleunigungsfaktor als Dezimalzahl ohne Einheit ein)*
+{#2.5:0.05#Richtig! Nach Amdahls Gesetz gilt S(N) = 1 / (s + (1 - s) / N) = 1 / (0.20 + 0.80 / 4) = 1 / 0.40 = 2.50.}
+
+
+::Q3_2_FEM_Stabsteifigkeit_Verschiebung::[markdown]Ein horizontaler Zugstab eines ebenen Fachwerks ist am linken Knoten $0$ fest eingespannt ($u_\{0x\} \= 0$, $u_\{0y\} \= 0$) und wird am rechten Knoten $1$ in positiver X-Richtung mit einer statischen Horizontalkraft von **$F_x \= 42\,\mathrm\{kN\}$** belastet.
+
+Gegeben sind die Material- und Geometriekennwerte des Stabs\:
+* Elastizitätsmodul (Stahl)\: $E \= 210\,\mathrm\{GPa\} \= 2{,}1 \cdot 10^\{11\}\,\mathrm\{N/m^2\}$
+* Querschnittsfläche des Stabs\: $A \= 1{,}0\,\mathrm\{cm^2\} \= 1{,}0 \cdot 10^\{-4\}\,\mathrm\{m^2\}$
+* Unverformte Stablänge\: $L \= 2{,}0\,\mathrm\{m\}$
+
+Berechnen Sie die resultierende **horizontale Knotenverschiebung $u_\{1x\}$ in Millimetern [mm]**. *(Geben Sie den Zahlenwert in Millimetern ohne Einheit ein)*
+{#4.0:0.1#Richtig! Axiale Steifigkeit k = E * A / L = (2.1e11 * 1.0e-4) / 2.0 = 1.05e7 N/m. Daraus folgt u_1x = F_x / k = 42000 N / 1.05e7 N/m = 0.004 m = 4.0 mm.}
+
+
+::Q3_3_CodeTracing_FEM_Assemblierung::[markdown]Zwei kollineare 1D-Federelemente (Element $A$ zwischen Knoten $0$ und $1$ mit Steifigkeit `kA = 150.0`, Element $B$ zwischen Knoten $1$ und $2$ mit Steifigkeit `kB = 250.0`) werden im folgenden C\#-Code in die globale $3 \times 3$-Steifigkeitsmatrix `K` assembliert\:
+
+```csharp
+double[,] K \= new double[3, 3];
+double[] kElem \= \{ 150.0, 250.0 \};
+int[,] nodes   \= \{ \{ 0, 1 \}, \{ 1, 2 \} \};
+
+for (int e \= 0; e < 2; e++)
+\{
+    int i \= nodes[e, 0];
+    int j \= nodes[e, 1];
+    double ke \= kElem[e];
+
+    K[i, i] += ke;
+    K[i, j] -= ke;
+    K[j, i] -= ke;
+    K[j, j] += ke;
+\}
+
+double traceCenter \= K[1, 1] + K[0, 1];
+```
+
+Welchen exakten numerischen Wert hat die Variable `traceCenter` nach Abschluss der Assemblierungsschleife? *(Geben Sie den Zahlenwert ohne Einheit ein)*
+{#250.0:0.1#Richtig! Am Mittelknoten 1 addieren sich beide Elementsteifigkeiten zu K[1,1] = 150.0 + 250.0 = 400.0. Der Nebendiagonaleintrag K[0,1] beträgt -150.0. Damit ist traceCenter = 400.0 + (-150.0) = 250.0.}
+
+
+::Q3_4_TPL_RaceCondition_Akkumulation::[markdown]Ein Entwickler möchte die gesamte kinetische Energie eines Partikelsystems ($N \= 1\,000\,000$ Partikel) parallel mit der .NET Task Parallel Library (TPL) aufsummieren\:
+
+```csharp
+double totalEnergy \= 0.0;
+Parallel.For(0, particles.Length, i =>
+\{
+    double e \= 0.5 * particles[i].Mass * particles[i].VelocitySquared;
+    totalEnergy += e;
+\});
+```
+
+Bei jedem Programmlauf liefert `totalEnergy` ein anderes, deutlich zu kleines Ergebnis. Was ist die exakte Ursache und wie lautet das performante Standardmuster zur Behebung in C\#? {
+=Die Operation totalEnergy += e ist eine nicht-atomare Read-Modify-Write-Sequenz mit Lost Updates (Race Condition); gelöst wird dies durch Parallel.For<double> mit Thread-lokalen Teilakkumulatoren und abschließendem lock im localFinally-Block. #Exzellent! Thread-lokale Reduktion vermeidet sowohl Race Conditions als auch Lock-Contention in der inneren Schleife.
+~Der Thread-Pool bricht Parallel.For-Schleifen ab einer Million Iterationen vorzeitig ab, weshalb die Schleife zwingend durch manuell instanziierte new Thread()-Objekte mit ThreadPriority.Highest ersetzt werden muss. #Falsch. Parallel.For verarbeitet beliebig große Iterationsbereiche vollständig.
+~Da double-Variablen auf 64-Bit-Architekturen nicht im CPU-Cache gehalten werden können, genügt das Voranstellen des Schlüsselworts volatile vor totalEnergy, um alle parallelen Additionen verlustfrei zu serialisieren. #Falsch. Das Schlüsselwort volatile macht eine zusammengesetzte += Operation nicht atomar.
+~Die Methode Parallel.For durchläuft das Array rückwärts, wodurch bei der Gleitkomma-Addition Rundungsfehler kumulieren; ein vorgeschaltetes Array.Sort(particles) stellt die deterministische Summengenauigkeit wieder her. #Falsch. Die massiven Abweichungen entstehen durch überschriebene Speicherzugriffe (Data Race), nicht durch Mantissenrundung.
+}
+
+
+::Q3_5_3D_Orbitkamera_PolSingularitaet::[markdown]In einer 3D-Anwendung (`SharpGL` / OpenGL) bewegt sich eine Orbitkamera auf einer Kugeloberfläche mit Radius $R$ um den Zielpunkt $(0, 0, 0)$. Ihre kartesische Position wird aus dem Azimutwinkel $\theta$ und dem Elevationswinkel $\phi$ bestimmt, während der globale Up-Vektor der Kamera in `gluLookAt` fest auf $\mathbf\{u\} \= (0, 1, 0)^\top$ gesetzt ist.
+
+Warum muss der Elevationswinkel $\phi$ in der Maussteuerung zwingend auf ein Intervall wie $[-89^\circ, +89^\circ]$ begrenzt (geclampt) werden? {
+=Bei phi = +-90° liegt die Blickrichtung exakt parallel zum festen Up-Vektor (0, 1, 0)^T, sodass deren Kreuzprodukt zur Berechnung des Kamera-Rechtsvektors zum Nullvektor entartet und die View-Matrix kollabiert. #Richtig! Beim senkrechten Blick von oben oder unten sind Sichtvektor und Up-Vektor kollinear (Pol-Singularität / Gimbal Lock).
+~Oberhalb von phi = 89° schneidet die Near-Clipping-Plane der perspektivischen Projektionsmatrix zwangsläufig den Koordinatenursprung, wodurch sämtliche Dreiecks-Primitive durch den Z-Buffer-Test verworfen werden. #Falsch. Die Lage der Near-Clipping-Plane hängt vom Abstand R ab, nicht vom Elevationswinkel phi.
+~Die trigonometrischen Funktionen Math.Sin und Math.Cos sind in der IEEE-754-Gleitkommaarithmetik nur im offenen Intervall (-pi/2, +pi/2) definiert und werfen exakt bei +-90° eine ArithmeticException. #Falsch. Math.Sin und Math.Cos sind für alle reellen Winkel problemlos definiert.
+~Ab einem Elevationswinkel von 90° kehrt sich in OpenGL der Umlaufsinn (Winding Order) aller Polygon-Eckpunkte von gegen den Uhrzeigersinn (CCW) auf im Uhrzeigersinn (CW) um, sodass das Backface-Culling das Modell ausblendet. #Falsch. Eine reine Kamerabewegung (Eigentliche Rotation det(R)=+1) spiegelt keine Geometrien.
+}
+
+
+::Q3_6_Multicore_False_Sharing::[markdown]Um in einer `Parallel.For`-Schleife über $4$ Threads jegliche Race Condition ohne `lock` zu vermeiden, legt ein Entwickler ein gemeinsames Array `double[] partialSums = new double[4]` an, in dem Thread `t` bei jeder Iteration direkt auf sein eigenes Element `partialSums[t] += val` schreibt.
+
+Obwohl das Ergebnis mathematisch exakt stimmt, ist die parallele Version deutlich langsamer als ein einzelner Thread. Welcher Hardware-Effekt verursacht diesen massiven Performance-Einbruch? {
+=Da die vier benachbarten double-Werte (32 Bytes) in derselben 64 Byte großen CPU-Cache-Line liegen, invalidieren die Kerne über das Cache-Kohärenzprotokoll bei jedem Schreibzugriff gegenseitig ihre L1-Caches (False Sharing). #Exakt! Beim Schreiben in dieselbe Cache-Line entsteht permanentes Cache-Line Ping-Pong zwischen den CPU-Kernen.
+~Der Garbage Collector von .NET verschiebt Arrays mit weniger als 8 Elementen bei jedem Schreibzugriff zwischen Generation 0 und dem Large Object Heap (LOH), was permanente Speicher-Kopieroperationen auslöst. #Falsch. Kleine Arrays verbleiben im regulären Heap und werden nicht bei jedem Schreibzugriff vom GC kopiert.
+~Der JIT-Compiler deaktiviert bei Zugriffen auf eindimensionale double-Arrays innerhalb von Lambda-Ausdrücken die Hardware-Gleitkommaeinheit (FPU) und emuliert die Addition langsam in Software auf dem Stack. #Falsch. Array-Zugriffe nutzen reguläre Hardware-FPU/SIMD-Instruktionen.
+~Durch die feste Array-Größe von 4 Elementen kommt es in der Arbeitsspeicher-Bank zu einem Adress-Aliasing, bei dem der Speicherkontroller alle vier Kerne über einen gemeinsamen Betriebssystem-Mutex blockiert. #Falsch. Es gibt keinen Betriebssystem-Mutex für Array-Indizes; die Ursache liegt im Hardware-Cache-Kohärenzprotokoll.
+}
+
+
+::Q3_7_Homogene_Matrizen_Szenengraph_Phong::[markdown]In einer 3D-Simulation eines Mehrachs-Industrieroboters (`SharpGL`) werden die Armsegmente über einen hierarchischen Szenengraphen mit homogenen $4 \times 4$-Transformationsmatrizen positioniert und mit dem Phong-Beleuchtungsmodell schattiert. Welche der folgenden Aussagen sind **mathematisch und technisch zutreffend**? *(Wählen Sie alle richtigen Aussagen)* {
+~%50%Da die Matrixmultiplikation nicht kommutativ ist (T * R != R * T), bestimmt die Reihenfolge von Translation und Rotation, ob ein Bauteil um seinen lokalen Ursprung gedreht oder um den Weltursprung geschwenkt wird. #Richtig! Reihenfolgevertauschung ändert die Kinematik fundamental.
+~%50%Durch das Sichern und Wiederherstellen der aktuellen ModelView-Matrix mittels glPushMatrix() und glPopMatrix() im Szenengraphen wirken Transformationen eines Elternknotens auf alle Kindknoten, ohne Geschwisterknoten zu verändern. #Richtig! Der Matrix-Stack isoliert Teilbäume im Szenengraphen sauber voneinander.
+~%-50%Im Phong-Beleuchtungsmodell hängt die Intensität des diffusen Reflexionsanteils (Lambert-Strahlung) ausschließlich vom Winkel zwischen dem Kamerablickvektor und dem Ausfallswinkel ab und ist unabhängig vom Normalenvektor n. #Falsch! Der diffuse Anteil hängt über das Skalarprodukt max(0, n * l) direkt vom Oberflächen-Normalenvektor n und der Lichtrichtung l ab.
+~%-50%Homogene 4x4-Matrizen werden in der 3D-Grafik nur für reine Drehungen benötigt, da eine dreidimensionale Translation v' = v + t bereits durch eine reguläre lineare 3x3-Matrixmultiplikation exakt darstellbar ist. #Falsch! Eine 3x3-Matrix lässt den Ursprung 0 immer fest; erst die 4. homogene Koordinate ermöglicht Translationen per Matrixmultiplikation.
+}
+
+
+::Q3_8_Statik_FEM_Cholesky_und_Lagerung::[markdown]Bei der statischen FE-Berechnung eines ebenen 2D-Fachwerks wird nach dem Einbau der Randbedingungen (Lagerungen) das reduzierte lineare Gleichungssystem $\mathbf\{K\}_\{ff\} \cdot \mathbf\{u\}_f \= \mathbf\{f\}_f$ für die freien Freiheitsgrade mittels **Cholesky-Zerlegung** ($\mathbf\{K\}_\{ff\} \= \mathbf\{L\} \cdot \mathbf\{L\}^\top$) in `Math.NET Numerics` gelöst. Welche Bedingungen und Eigenschaften sind **zwingend zutreffend**? *(Wählen Sie alle richtigen Aussagen)* {
+~%50%Damit die reduzierte Steifigkeitsmatrix K_ff symmetrisch positiv definit (SPD) ist, müssen in der 2D-Ebene alle drei Starrkörpermoden (zwei Translationen, eine Rotation) durch Lagerungen sowie innere Mechanismen verhindert sein. #Richtig! Erst das Unterbinden aller Starrkörperbewegungen und Mechanismen macht K_ff positiv definit.
+~%50%Die Cholesky-Zerlegung nutzt die Symmetrie und positive Definitheit von K_ff gezielt aus, benötigt im Vergleich zur allgemeinen LU-Zerlegung nur etwa halb so viele Gleitkommaoperationen und kommt ohne Zeilenpivotisierung aus. #Richtig! Cholesky ist der effizienteste direkte Löser für symmetrisch positiv definite Steifigkeitsmatrizen.
+~%-50%Die ungefilterte Gesamtsteifigkeitsmatrix K (vor dem Streichen der gelagerten Freiheitsgrade) besitzt ausschließlich strikt positive Eigenwerte und kann daher immer direkt ohne Randbedingungen per Cholesky faktorisiert werden. #Falsch! Ohne Lagerung ist die Gesamtmatrix K aufgrund der freien Starrkörpermoden singulär (Eigenwerte = 0) und nur positiv semidefinit.
+~%-50%Wenn an einem unbelasteten freien Knoten des Fachwerks der äußere Lastvektor-Eintrag gleich Null ist (f_i = 0), wird die zugehörige Hauptdiagonale in K_ff automatisch zu Null und die Cholesky-Zerlegung bricht mit einer Division durch Null ab. #Falsch! Die Steifigkeitsmatrix K_ff ist eine reine Struktur- und Materialeigenschaft und vollkommen unabhängig vom Lastvektor f_f.
+}

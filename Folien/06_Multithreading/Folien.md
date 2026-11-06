@@ -26,33 +26,30 @@ Dieses Kapitel umfasst die folgenden Abschnitte:
 
 ---
 
-### Showcase & Peer Review: Termin 05 (3D & Szenengraph)
+### Live-Showcase & Code-Defense: Termin 05
+
+Präsentation der Hausübung aus Termin 05 (**Stufe 1: Basisaufgabe** + **Stufe 2: Track A oder B**, [Aufgabenblatt 05](../../Uebungen/Termin_05_3D_OpenGL_Szenengraph/Aufgabenblatt.md)):
 
 <div class="columns">
 <div class="two">
 
-**Track A: SCARA-Roboterarm (Industrie)**
-- Hierarchischer Szenengraph mit SharpGL
-- Vorwärtskinematik mit Rotationsachsen
-- Kardanfehlerfreie Orbit-Kameraführung
-- Werkstück-Greifbereich & TCP-Validierung
-- *Peer Review:* Matrix-Stack (`glPushMatrix`)
+#### Stufe 2 – Track A: SCARA-Roboterarm (Industrie)
+- **Szenengraph:** Vorwärtskinematik mit 4 Achsen & Parallelgreifer (`_rootNode.Render`).
+- **Interaktion:** Kardanfehlerfreie Orbit-Kamera inkl. Panning & animiertes Teach-In.
+- **Stresstest:** Lokaler Matrix-Stack (`glPushMatrix`) & TCP-Greifdistanz prüfen.
 
 </div>
 <div class="two">
 
-**Track B: Arcade Claw Machine (Game)**
-- Interaktiver Jahrmarkt-Greifautomat
-- Mehrgliedrige Seil- und Greifer-Kinematik
-- Kugelkoordinaten-Kamerasteuerung
-- Physikalischer Kollisions-Snap für Greifobjekt
-- *Peer Review:* Achs-Hierarchie & Tasten-Steuerung
+#### Stufe 2 – Track B: Arcade Claw Machine (Game)
+- **Szenengraph:** Jahrmarkt-Greifautomat mit Portalbrücke, Seilwinde & 3-Finger-Greifer.
+- **Interaktion:** Tastatursteuerung, Orbit-Kamera inkl. Panning & 3D-Kollisionsprüfung.
+- **Stresstest:** Physikalischer Kollisions-Snap & Achs-Hierarchie beim Ablegen prüfen.
 
 </div>
 </div>
 
-> [!NOTE]
-> **Showcase & Plenumsdiskussion:** Live-Demonstration auf der Beamer-Bühne im Rotationsprinzip. Auditorium hinterfragt Gelenkhierarchien und Kardanfehler. Details: [Aufgabenblatt Termin 05](../../Uebungen/Termin_05_3D_OpenGL_Szenengraph/Aufgabenblatt.md).
+> **Code-Defense (Säule 2b, 20 %):** Live-Demonstration am Beamer mit Prüfung von Gelenkhierarchien, lokalem Matrix-Stack und Kardanfehler-Schutz.
 
 ---
 
@@ -60,10 +57,24 @@ Dieses Kapitel umfasst die folgenden Abschnitte:
 
 Dieser Abschnitt umfasst die folgenden Inhalte:
 
+- Brücke zu Termin 02–05 und Scharnier zum Modellierungs-Block (T07–T10)
 - Motivation: Auslastung moderner Mehrkern-Prozessoren
 - Unterschied: Prozess vs. Thread
 - Nebenläufigkeit (Concurrency) vs. echte Parallelität
 - Theoretische Grenzen: Speedup, Effizienz & Amdahlsches Gesetz
+
+---
+
+### Rückblick & Brücke: Wo stehen wir in der Vorlesung?
+
+In **Termin 02 bis 05** haben wir leistungsfähige 2D- und 3D-Oberflächen gebaut – warum bildet **Termin 06** heute das architektonische Scharnier zur zweiten Semesterhälfte?
+
+- **Rückblick & Erfahrung aus den bisherigen Showcases (T02–T05):**
+  - Solange Physik und Rendering gemeinsam im **WPF UI-Thread** laufen, stehen für alles zusammen bei $60\,\text{FPS}$ nur **$16{,}6\,\text{ms}$ Budget pro Frame** zur Verfügung.
+- **Der Engpass für komplexe Ingenieursmodelle (T07–T10):**
+  - Sobald wir ab nächster Woche große Gleichungssysteme (T07), hochfrequente Differentialgleichungen (T08) oder Millionen Monte-Carlo-Läufe (T09) berechnen, dauert ein Rechenschritt schnell Sekunden statt Millisekunden $\implies$ **Das WPF-Fenster friert komplett ein ("Keine Rückmeldung")**, und 15 von 16 CPU-Kernen langweilen sich!
+- **Einordnung ins große Ganze (Das Architektur-Scharnier):**
+  - Heute trennen wir **Berechnung (Worker-Threads / `Parallel.For`)** und **Visualisierung (UI-Dispatcher)** sauber voneinander – das Fundament für alle kommenden Solver in **Termin 07 bis 10**.
 
 ---
 
@@ -152,7 +163,7 @@ $$E(p) = \frac{S(p)}{p} = \frac{T_1}{p \cdot T_p} \le 1 \quad (100\,\%)$$
 
 ---
 
-![center w:1080](./Diagramme/Amdahlsches_Gesetz_Speedup.svg)
+![](./Diagramme/Amdahlsches_Gesetz_Speedup.svg)
 
 ---
 
@@ -439,7 +450,7 @@ Die Entkopplung von Simulation und Benutzeroberfläche erfordert eine klare Thre
 
 ### Signal- & Datenfluss: UI & Hintergrund-Worker
 
-![center w:1100](./Diagramme/Multithreading_WPF_Architektur.svg)
+![](./Diagramme/Multithreading_WPF_Architektur.svg)
 
 *Ablauf: 1. Start aus UI ➔ 2. Simulation auf ThreadPool ➔ 3. Thread-sicheres Progress-Reporting ➔ 4. UI-Aktualisierung im SynchronizationContext.*
 
@@ -636,32 +647,30 @@ public void Simulate(CancellationToken token)
 
 ---
 
-### Hands-on Labor: Termin 06 – Pick your Track!
+### Hausübung Termin 06: Multithreading & TPL
+
+**Stufe 1 (Basisaufgabe `1.1`–`1.3` für alle Teams auf `MultithreadingBenchmark.sln`):** `Task.Run`, `IProgress<T>`, `CancellationToken` & Amdahl-Reihe ([Aufgabenblatt 06](../../Uebungen/Termin_06_Multithreading_und_TPL/Aufgabenblatt.md)) $\to$ **Stufe 2 (Vertiefung – Wahl: Track A ODER Track B, 10 Pkt.):**
 
 <div class="columns">
 <div class="two">
 
-**Track A: Toleranzanalyse (Industrie)**
+#### Stufe 2 – Track A: Toleranzanalyse (Industrie)
 - **Szenario:** Getriebe-Passungsspiel mit Maßketten
 - $N = 10\,000\,000$ Bauteilvarianten parallel berechnen
 - Parallele TPL-Verteilung mit `Parallel.For`
-- Thread-sichere Aggregation (`Interlocked`)
-- Entkopplung vom UI via `Progress<T>` & Not-Aus
+- Thread-sichere Aggregation (`Interlocked` / lokal)
+- Entkopplung vom UI via `IProgress<T>` & Not-Aus
 
 </div>
 <div class="two">
 
-**Track B: Zombie-Horde & Boids (Game)**
+#### Stufe 2 – Track B: Zombie-Horde & Boids (Game)
 - **Szenario:** Schwarm-Simulation à la Craig Reynolds
-- $100\,000$ Boids/Zombies mit Nachbarschaftssuche
+- $50\,000+$ Boids/Zombies mit Nachbarschaftssuche
 - Single-Thread bricht bei 12 FPS ein
 - Mit `Parallel.For` flüssige 60 FPS auf allen Kernen
 - Reaktives WPF-Dashboard mit Live-FPS-Zähler
 
 </div>
 </div>
-
-> [!TIP]
-> **Arbeitsauftrag:** Bearbeiten Sie im 2er-Team **GENAU EINEN** der beiden Tracks!
-> Aufgabenstellung & Vorlagen: [Aufgabenblatt Termin 06](../../Uebungen/Termin_06_Multithreading_und_TPL/Aufgabenblatt.md).
 
