@@ -1,0 +1,142 @@
+﻿<UserControl x:Class="ScottPlotTelemetry.RacingHudView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sp="clr-namespace:ScottPlot.WPF;assembly=ScottPlot.WPF"
+             Background="#141414"
+             IsVisibleChanged="OnIsVisibleChanged">
+
+    <UserControl.Resources>
+        <Style x:Key="TileCaption" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#888888"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="TileValue" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#00D2FF"/>
+            <Setter Property="FontFamily" Value="Consolas"/>
+            <Setter Property="FontSize" Value="20"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="Tile" TargetType="Border">
+            <Setter Property="Background" Value="#1E1E1E"/>
+            <Setter Property="BorderBrush" Value="#2E2E2E"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
+            <Setter Property="MinWidth" Value="78"/>
+        </Style>
+        <Style x:Key="HudButton" TargetType="Button">
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
+            <Setter Property="Background" Value="#2A2A2A"/>
+            <Setter Property="Foreground" Value="#DDDDDD"/>
+            <Setter Property="BorderBrush" Value="#444444"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Margin="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="3*"/>
+            <ColumnDefinition Width="2*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ================= HUD-Kopfzeile ================= -->
+        <WrapPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,8">
+
+            <Border x:Name="ShiftBadge" Style="{StaticResource Tile}" MinWidth="150" Background="#2A2A2A">
+                <TextBlock x:Name="TxtShiftBadge" Text="DREHZAHL OK" Foreground="#AAAAAA"
+                           FontWeight="Bold" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <Border x:Name="GripBadge" Style="{StaticResource Tile}" MinWidth="200" Background="#1B4D1B">
+                <TextBlock x:Name="TxtGripBadge" Text="VOLLER GRIP" Foreground="#98FB98"
+                           FontWeight="Bold" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+
+            <Border Style="{StaticResource Tile}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource TileCaption}" Text="SPEED [km/h]"/>
+                    <TextBlock x:Name="TxtSpeed" Style="{StaticResource TileValue}" Text="---"/>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Tile}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource TileCaption}" Text="RPM"/>
+                    <TextBlock x:Name="TxtRpm" Style="{StaticResource TileValue}" Text="----"/>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Tile}" MinWidth="50">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource TileCaption}" Text="GANG"/>
+                    <TextBlock x:Name="TxtGear" Style="{StaticResource TileValue}" Text="-"/>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Tile}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource TileCaption}" Text="a_x [g]"/>
+                    <TextBlock x:Name="TxtAx" Style="{StaticResource TileValue}" Text="-.--"/>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Tile}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource TileCaption}" Text="a_y [g]"/>
+                    <TextBlock x:Name="TxtAy" Style="{StaticResource TileValue}" Text="-.--"/>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Tile}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource TileCaption}" Text="a_res / (μ·g)"/>
+                    <TextBlock x:Name="TxtUtil" Style="{StaticResource TileValue}" Text="--%"/>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Tile}" MinWidth="110">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource TileCaption}" Text="ABSCHNITT"/>
+                    <TextBlock x:Name="TxtSegment" Style="{StaticResource TileValue}" Text="---" FontSize="16"/>
+                </StackPanel>
+            </Border>
+
+            <Button x:Name="BtnPause"  Style="{StaticResource HudButton}" Content="Pause"           Click="BtnPause_Click"/>
+            <Button x:Name="BtnReset"  Style="{StaticResource HudButton}" Content="Reset"           Click="BtnReset_Click"/>
+            <Button x:Name="BtnSlide"  Style="{StaticResource HudButton}" Content="Traktionsabriss" Click="BtnSlide_Click"/>
+        </WrapPanel>
+
+        <!-- ================= Panel 1: Speed &amp; RPM ================= -->
+        <Border Grid.Row="1" Grid.Column="0" BorderBrush="#2E2E2E" BorderThickness="1" Margin="0,0,4,4">
+            <sp:WpfPlot x:Name="PlotSpeedRpm"/>
+        </Border>
+
+        <!-- ================= Panel 2: Kamm'scher Kreis ================= -->
+        <Border Grid.Row="1" Grid.Column="1" BorderBrush="#2E2E2E" BorderThickness="1" Margin="4,0,0,4">
+            <sp:WpfPlot x:Name="PlotGG"/>
+        </Border>
+
+        <!-- ================= Panel 3: Brems-Histogramm ================= -->
+        <Border Grid.Row="2" Grid.Column="0" BorderBrush="#2E2E2E" BorderThickness="1" Margin="0,4,4,0">
+            <sp:WpfPlot x:Name="PlotBrake"/>
+        </Border>
+
+        <!-- ================= Panel 4: MSAGL-Streckentopologie ================= -->
+        <Border Grid.Row="2" Grid.Column="1" BorderBrush="#2E2E2E" BorderThickness="1" Margin="4,4,0,0" Background="#1E1E1E">
+            <Grid>
+                <Grid x:Name="GraphHost"/>
+                <TextBlock Text="Streckentopologie (MSAGL) – Mausrad: Zoom, Ziehen: Verschieben"
+                           Foreground="#777777" FontSize="10" Margin="6,4"
+                           HorizontalAlignment="Left" VerticalAlignment="Top" IsHitTestVisible="False"/>
+            </Grid>
+        </Border>
+
+        <!-- ================= Fußzeile ================= -->
+        <Border Grid.Row="3" Grid.ColumnSpan="2" Background="#1E1E1E" Margin="0,8,0,0" Padding="8,4">
+            <TextBlock x:Name="TxtFooter" Foreground="#CCCCCC" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap"
+                       Text="Runde 1 | Letzte --.- s | Beste --.- s | Ø Rundenzeit --.- ± -.-- s"/>
+        </Border>
+    </Grid>
+</UserControl>
