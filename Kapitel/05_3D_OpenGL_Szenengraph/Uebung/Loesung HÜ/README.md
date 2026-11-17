@@ -1,4 +1,6 @@
 # Termin 05 – 3D-Visualisierung, SharpGL & hierarchischer Szenengraph
+Teammitglieder: Brandstätter Nora, Reiter Victoria
+
 
 C# / .NET 8, WPF + `SharpGL.WPF.OpenGLControl`, Fixed-Function-Pipeline (OpenGL 2.1).
 Keine Threads, keine Gleichungslöser – die Kinematik läuft ausschließlich über Transformationsmatrizen.
@@ -6,13 +8,9 @@ Keine Threads, keine Gleichungslöser – die Kinematik läuft ausschließlich �
 Über die **ComboBox „Modus“** im Hauptfenster wird zwischen **Stufe 1** (SCARA-Basisaufgabe) und
 **Stufe 2 – Track B** (Arcade Claw Crane) umgeschaltet. Jede Stufe behält ihre eigene Kameraeinstellung.
 
-> **Screenshots:** bitte hier einfügen (`docs/stufe1.png`, `docs/stufe2.png`).
+![Stufe 1](docs/stufe1.png)
+![Stufe 2 - Track B](docs/stufe2.png)
 
-## Starten
-```
-dotnet run --project SceneGraph3D
-dotnet test            # Unit-Tests (Kamera, Szenengraph, Pan, Claw-Crane-Zyklus)
-```
 
 ## Steuerung
 | Eingabe | Wirkung |
