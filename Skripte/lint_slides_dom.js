@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Automated MARP DOM Layout & SVG Font Linter
  * 
  * Verifies that no slide in the curriculum suffers from:
@@ -100,6 +100,7 @@ async function lintSlideDeck(markdownPath, browser, options = {}) {
 
   const deckDir = path.dirname(markdownPath);
   const deckName = path.basename(deckDir);
+  const isAppendix = /^Folien_Anhang_.*\.md$/i.test(path.basename(markdownPath));
   // Compile HTML directly in deck directory so that relative paths (./Diagramme/, etc.) resolve properly
   const tempHtml = path.join(deckDir, '.tmp_lint.html');
 
@@ -116,8 +117,11 @@ async function lintSlideDeck(markdownPath, browser, options = {}) {
   const fileUrl = 'file:///' + tempHtml.replace(/\\/g, '/');
   await page.goto(fileUrl, { waitUntil: 'networkidle0' });
 
-  // Ensure all images are loaded
+  // Ensure all images and fonts are loaded and layout has settled
   await page.evaluate(async () => {
+    if (document.fonts && document.fonts.ready) {
+      await document.fonts.ready;
+    }
     const imgs = Array.from(document.querySelectorAll('img'));
     await Promise.all(imgs.map(img => {
       if (img.complete) return Promise.resolve();
@@ -126,6 +130,32 @@ async function lintSlideDeck(markdownPath, browser, options = {}) {
         img.onerror = resolve;
       });
     }));
+    await new Promise(r => setTimeout(r, 120));
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+  });
+
+  // Check Full-Bleed background images have landscape (~16:9) aspect ratio
+  const fullBleedBgIssues = await page.evaluate(async () => {
+    const bgSecs = Array.from(document.querySelectorAll('section[data-marpit-advanced-background="background"]:not([data-marpit-advanced-background-split])'));
+    const bad = [];
+    for (const bgSec of bgSecs) {
+      const fig = bgSec.querySelector('figure');
+      if (!fig) continue;
+      const bgImg = getComputedStyle(fig).backgroundImage || fig.style.backgroundImage || '';
+      const m = bgImg.match(/url\(["']?([^"')]+)["']?\)/);
+      if (!m) continue;
+      const url = m[1];
+      const dims = await new Promise(resolve => {
+        const im = new Image();
+        im.onload = () => resolve({ w: im.naturalWidth, h: im.naturalHeight });
+        im.onerror = () => resolve(null);
+        im.src = url;
+      });
+      if (dims && dims.h > 0 && (dims.w / dims.h) < 1.5) {
+        bad.push({ pagination: bgSec.getAttribute('data-marpit-pagination') || '', url, w: dims.w, h: dims.h });
+      }
+    }
+    return bad;
   });
 
   // Evaluate DOM
@@ -164,6 +194,49 @@ async function lintSlideDeck(markdownPath, browser, options = {}) {
         if (bottomRel > contentBottom) contentBottom = bottomRel;
       });
 
+      const elementGaps = [];
+      const isVisibleBox = (el) => {
+        if (el.tagName === 'PRE' || el.tagName === 'MARP-PRE' || el.tagName === 'BLOCKQUOTE') return true;
+        if (el.tagName === 'DIV' && el.classList.contains('columns')) {
+          return sec.classList.contains('showcase') || sec.classList.contains('homework');
+        }
+        return false;
+      };
+      const collectGaps = (parent, scope) => {
+        const visible = Array.from(parent.children).filter(c => c.tagName !== 'HEADER' && c.tagName !== 'FOOTER' && c.getBoundingClientRect().height > 0);
+        for (let i = 0; i < visible.length - 1; i++) {
+          const a = visible[i];
+          const b = visible[i + 1];
+          const gap = Math.round(b.getBoundingClientRect().top - a.getBoundingClientRect().bottom);
+          const expected = (isVisibleBox(a) && isVisibleBox(b)) ? 22 : 16;
+          elementGaps.push({
+            scope,
+            pair: `${a.tagName}${a.className ? '.' + String(a.className).split(/\s+/)[0] : ''} -> ${b.tagName}${b.className ? '.' + String(b.className).split(/\s+/)[0] : ''}`,
+            gap,
+            expected
+          });
+        }
+      };
+      collectGaps(sec, 'slide');
+      let minTextColHeight = null;
+      sec.querySelectorAll('div.columns').forEach(cols => {
+        const children = Array.from(cols.children);
+        const hasImgCol = children.some(c => c.querySelector('img') && !c.querySelector('p, ul, ol, pre'));
+        if (!hasImgCol) return;
+        children.forEach(c => {
+          if (c.querySelector('img') || c.querySelector('pre, marp-pre')) return;
+          const items = Array.from(c.children).filter(el => el.getBoundingClientRect().height > 0);
+          if (items.length === 0) return;
+          const top = Math.min(...items.map(el => el.getBoundingClientRect().top));
+          const bot = Math.max(...items.map(el => el.getBoundingClientRect().bottom));
+          const h = bot - top;
+          if (minTextColHeight === null || h < minTextColHeight) minTextColHeight = h;
+        });
+      });
+      sec.querySelectorAll('div.columns > div').forEach((col, cIdx) => {
+        collectGaps(col, `col${cIdx + 1}`);
+      });
+
       if (contentChildren.length === 0) {
         contentTop = 0;
         contentBottom = 0;
@@ -181,16 +254,61 @@ async function lintSlideDeck(markdownPath, browser, options = {}) {
         };
       });
 
+      // Check text color harmony against effective local background color on highlight slides
+      const colorIssues = [];
+      const parseRgba = (str) => {
+        const m = str && str.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)/i);
+        if (!m) return null;
+        return { r: parseFloat(m[1]), g: parseFloat(m[2]), b: parseFloat(m[3]), a: m[4] !== undefined ? parseFloat(m[4]) : 1 };
+      };
+      const getEffectiveBg = (el) => {
+        let cur = el;
+        while (cur && cur.tagName !== 'HTML') {
+          const bg = parseRgba(window.getComputedStyle(cur).backgroundColor);
+          if (bg && bg.a > 0.05) return bg;
+          cur = cur.parentElement;
+        }
+        return { r: 255, g: 255, b: 255, a: 1 };
+      };
+      const isHighlight = ['showcase', 'recap', 'outlook', 'summary', 'homework', 'activity', 'solution'].some(c => sec.classList.contains(c));
+      if (isHighlight) {
+        const textEls = sec.querySelectorAll('header, footer, blockquote, p, li, h1, h2, h3, h4');
+        textEls.forEach(el => {
+          if (!el.textContent || !el.textContent.trim()) return;
+          if (el.getBoundingClientRect().height <= 0) return;
+          const fg = parseRgba(window.getComputedStyle(el).color);
+          const bg = getEffectiveBg(el);
+          if (!fg || !bg) return;
+          const bgChroma = Math.max(bg.r, bg.g, bg.b) - Math.min(bg.r, bg.g, bg.b);
+          const fgChroma = Math.max(fg.r, fg.g, fg.b) - Math.min(fg.r, fg.g, fg.b);
+          const fgLum = (fg.r + fg.g + fg.b) / 3;
+          // If local background is tinted (chroma >= 8, e.g., #f0f6ff, #f0fdf4, #fffbeb, #f1f5f9),
+          // forbid mid/light neutral gray text (fgChroma <= 6 && fgLum > 55)
+          if (bgChroma >= 8 && fgChroma <= 6 && fgLum > 55) {
+            colorIssues.push({
+              tag: el.tagName,
+              fg: `rgb(${Math.round(fg.r)},${Math.round(fg.g)},${Math.round(fg.b)})`,
+              bg: `rgb(${Math.round(bg.r)},${Math.round(bg.g)},${Math.round(bg.b)})`,
+              sample: el.textContent.trim().slice(0, 30)
+            });
+          }
+        });
+      }
+
       const heading = sec.querySelector('h1, h2, h3');
       let title = '';
       if (heading) {
         title = (heading.textContent || heading.innerText || '').trim().replace(/\s+/g, ' ');
       }
 
+      const h1h2 = sec.querySelector('h1, h2');
+      const isOpener = !!h1h2;
+
       results.push({
         sectionIndex: idx + 1,
         pagination,
         title,
+        isOpener,
         clientHeight,
         scrollHeight,
         clientWidth,
@@ -199,6 +317,9 @@ async function lintSlideDeck(markdownPath, browser, options = {}) {
         footerTop,
         contentTop,
         contentBottom,
+        minTextColHeight,
+        elementGaps,
+        colorIssues,
         images
       });
     });
@@ -322,24 +443,53 @@ async function lintSlideDeck(markdownPath, browser, options = {}) {
     const hasHOverflow = hOverflow > maxOverflow;
     const hasSvgIssues = svgIssues.length > 0;
 
+    const availableHeight = Math.max(1, s.footerTop - s.headerBottom);
+    const contentHeight = s.contentBottom > s.contentTop ? (s.contentBottom - s.contentTop) : 0;
+    const fillRatio = contentHeight / availableHeight;
+    const minFillRatio = options.minFillRatio !== undefined ? options.minFillRatio : 0.80;
+    const textColRatio = (s.minTextColHeight !== null && s.minTextColHeight !== undefined) ? (s.minTextColHeight / availableHeight) : 1;
+    const hasSparseTextCol = !s.isOpener && textColRatio < 0.45;
+    const hasUnderfill = !isAppendix && !s.isOpener && minFillRatio > 0 && (fillRatio < minFillRatio || hasSparseTextCol);
+
+    const gapTolerance = options.gapTolerance !== undefined ? options.gapTolerance : 1;
+    const gapIssues = (s.elementGaps || []).filter(g => Math.abs(g.gap - (g.expected || 16)) > gapTolerance);
+    const hasGapError = !isAppendix && gapIssues.length > 0;
+    const colorIssues = s.colorIssues || [];
+    const hasColorError = colorIssues.length > 0;
+    for (const bgErr of fullBleedBgIssues) {
+      if (!bgErr.pagination || bgErr.pagination === String(s.pagination)) {
+        svgIssues.push({
+          file: decodeURIComponent(bgErr.url.split('/').pop().split('?')[0]),
+          issues: [{ type: 'PORTRAIT_FULLBLEED_BG', message: `Full-Bleed ![bg] erfordert Querformat (>= 1.5:1), hat aber ${bgErr.w}x${bgErr.h} (${(bgErr.w / bgErr.h).toFixed(2)}:1).` }]
+        });
+      }
+    }
+    const hasSvgIssuesAfterBg = svgIssues.length > 0;
+
     slides.push({
       ...s,
       effectiveVOverflow: Math.round(effectiveVOverflow),
       hOverflow: Math.round(hOverflow),
       headerMargin: Math.round(headerMargin),
       footerMargin: Math.round(footerMargin),
+      fillRatio,
       svgIssues,
-      hasError: hasVOverflow || hasHOverflow || hasHeaderCollision || hasFooterCollision || hasSvgIssues,
+      gapIssues,
+      colorIssues,
+      hasError: hasVOverflow || hasHOverflow || hasHeaderCollision || hasFooterCollision || hasSvgIssuesAfterBg || hasUnderfill || hasGapError || hasColorError,
       hasVOverflow,
       hasHOverflow,
       hasHeaderCollision,
       hasFooterCollision,
-      hasSvgIssues
+      hasSvgIssues: hasSvgIssuesAfterBg,
+      hasUnderfill,
+      hasGapError,
+      hasColorError
     });
   }
 
-  // 3. Schema- und BildprÃ¼fung fÃ¼r Kapitel- und AbschnittsÃ¼bersichten
-  if (!options.skipSchema) {
+  // 3. Schema- und Bildprüfung für Kapitel- und Abschnittsübersichten (nur Hauptfoliensatz, nicht für Anhänge)
+  if (!options.skipSchema && !isAppendix) {
     const sectionLint = lintSectionDeck(markdownPath);
     if (sectionLint && sectionLint.issues && sectionLint.issues.length > 0) {
       for (const iss of sectionLint.issues) {
@@ -379,6 +529,9 @@ async function main() {
   let skipSchema = false;
   let checkImages = false;
   let minImageWidthRatio = 0.95;
+  let minFillRatio = 0.80;
+  let reportFill = false;
+  let reportGaps = false;
 
   args.forEach(arg => {
     if (arg.startsWith('--min-font-size=')) {
@@ -394,6 +547,12 @@ async function main() {
     } else if (arg.startsWith('--min-image-width=')) {
       minImageWidthRatio = parseFloat(arg.split('=')[1]);
       checkImages = true;
+    } else if (arg.startsWith('--min-fill=')) {
+      minFillRatio = parseFloat(arg.split('=')[1]);
+    } else if (arg === '--report-fill') {
+      reportFill = true;
+    } else if (arg === '--report-gaps') {
+      reportGaps = true;
     } else if (!arg.startsWith('--')) {
       target = arg;
     }
@@ -409,22 +568,32 @@ async function main() {
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
 
+  const collectChapterDecks = (chapterDir) => {
+    const folienDir = path.join(chapterDir, 'Folien');
+    if (!fs.existsSync(folienDir)) return;
+    const mainDeck = path.join(folienDir, 'Folien.md');
+    if (fs.existsSync(mainDeck)) decks.push(mainDeck);
+    const appendices = fs.readdirSync(folienDir)
+      .filter(f => /^Folien_Anhang_.*\.md$/i.test(f))
+      .sort();
+    for (const app of appendices) {
+      decks.push(path.join(folienDir, app));
+    }
+  };
+
   const decks = [];
   if (target === 'all') {
-    const folienDir = path.resolve('Folien');
-    const entries = fs.readdirSync(folienDir).sort();
-    entries.forEach(e => {
-      const p = path.join(folienDir, e, 'Folien.md');
-      if (fs.existsSync(p)) decks.push(p);
-    });
+    const kapitelDir = path.resolve('Kapitel');
+    const entries = fs.readdirSync(kapitelDir).sort();
+    entries.forEach(e => collectChapterDecks(path.join(kapitelDir, e)));
   } else if (fs.existsSync(target)) {
     decks.push(path.resolve(target));
   } else {
     // Try matching chapter number
-    const folienDir = path.resolve('Folien');
-    const match = fs.readdirSync(folienDir).find(d => d.startsWith(target));
+    const kapitelDir = path.resolve('Kapitel');
+    const match = fs.readdirSync(kapitelDir).find(d => d.startsWith(target));
     if (match) {
-      decks.push(path.join(folienDir, match, 'Folien.md'));
+      collectChapterDecks(path.join(kapitelDir, match));
     } else {
       console.error(`Target not found: ${target}`);
       process.exit(1);
@@ -441,12 +610,33 @@ async function main() {
   const allResults = [];
 
   for (const deck of decks) {
-    const deckName = path.basename(path.dirname(deck));
+    const dDir = path.dirname(deck);
+    const baseChapter = path.basename(dDir) === 'Folien' ? path.basename(path.dirname(dDir)) : path.basename(dDir);
+    const deckBase = path.basename(deck);
+    const deckName = /^Folien_Anhang_.*\.md$/i.test(deckBase) ? `${baseChapter} (${deckBase})` : baseChapter;
     process.stdout.write(`Inspecting ${deckName} ... `);
-    const res = await lintSlideDeck(deck, browser, { minFontSize, minHeaderMargin, minFooterMargin, skipSchema, checkImages, minImageWidthRatio });
+    const res = await lintSlideDeck(deck, browser, { minFontSize, minHeaderMargin, minFooterMargin, skipSchema, checkImages, minImageWidthRatio, minFillRatio });
     allResults.push(res);
     grandTotalSlides += res.totalSlides;
     grandTotalErrors += res.errorSlides.length;
+
+    if (reportFill) {
+      console.log(`\n  [Fill-Report ${deckName}]`);
+      for (const sl of res.slides) {
+        if (!sl.isOpener) {
+          console.log(`    Folie ${String(sl.sectionIndex).padStart(2, '0')} (${Math.round(sl.fillRatio * 100)}%): ${sl.title}`);
+        }
+      }
+    }
+    if (reportGaps) {
+      console.log(`\n  [Gap-Report ${deckName}]`);
+      for (const sl of res.slides) {
+        if (sl.elementGaps && sl.elementGaps.length > 0) {
+          const gapStr = sl.elementGaps.map(g => `${g.pair}: ${g.gap}px`).join(' | ');
+          console.log(`    Folie ${sl.pagination} [${sl.title || 'Ohne'}]: ${gapStr}`);
+        }
+      }
+    }
 
     if (res.errorSlides.length === 0) {
       console.log(`âœ“ OK (${res.totalSlides} Folien sauber)`);
@@ -478,6 +668,15 @@ async function main() {
         }
         if (err.schemaIssues && err.schemaIssues.length > 0) {
           err.schemaIssues.forEach(msg => issues.push(`Schema-Fehler: ${msg}`));
+        }
+        if (err.hasUnderfill) {
+          issues.push(`Folie zu leer: vertikale Auslastung nur ${Math.round(err.fillRatio * 100)}% (< ${Math.round(minFillRatio * 100)}%)`);
+        }
+        if (err.hasGapError) {
+          err.gapIssues.forEach(g => issues.push(`Vertikaler Gap inkonsistent (${g.scope}: ${g.pair} = ${g.gap}px, erwartet ${g.expected || 16}px)`));
+        }
+        if (err.hasColorError) {
+          err.colorIssues.forEach(c => issues.push(`Ungetönter Grauton auf Highlight-Hintergrund (${c.tag} "${c.sample}..." hat ${c.fg} auf ${c.bg})`));
         }
         console.log(`    - Folie ${err.pagination} [${err.title || 'Ohne Titel'}]: ${issues.join(' | ')}`);
       }

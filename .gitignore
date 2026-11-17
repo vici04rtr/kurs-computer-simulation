@@ -23,9 +23,12 @@ obj/
 *.synctex.gz
 *.toc
 
-# MARP/Latex/Tikz build files
+# MARP/Latex/Tikz & Moodle XML build artifacts
 
 *.pdf
+Kapitel/*/Moodle/*.xml
 
 # Temporary audit artifacts
 .tmp_raster_svg/
+.tmp_*/
+scratch/

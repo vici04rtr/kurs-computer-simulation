@@ -18,43 +18,211 @@
  *    - Aufzählungsliste der Inhalte (- ...)
  *    - Konsistenz zwischen Kapitel-Agenda und tatsächlichen Abschnitten
  *
- * 3. Kapitel-Brücke & Rückblick in Abschnitt N.1 (Kapitel 01 bis 10):
+ * 3. Kapitel-Brücke & Rückblick vor Abschnitt N.1 (Kapitel 01 bis 10):
  *    - Dedizierte Einstiegsfolie '### Rückblick & Brücke: ...' (oder '### Einordnung & Rückblick: ...')
+ *      nach Kapitel-Opener / optionaler Quiz- & Showcase-Folie und vor '## N.1:'
+ *
+ * 4. Visueller Rhythmus & Layout-Shift (ab Kap. 06 als Fehler, Kap. 00-05 als Warnung):
+ *    - Keine zwei reinen Textfolien (ohne Grafik/SVG und ohne Code) direkt hintereinander
+ *    - Signifikanter visueller Shift zwischen Nachbarfolien (Spaltenbreiten, Text-/Bild-/Code-/Mischspalten, mehrzeilige Layouts)
+ *
+ * 5. Abschnitts-Balance & visuelle Verankerung (ab Kap. 06 als Fehler, Kap. 00-05 als Warnung):
+ *    - Jeder Abschnitt muss mindestens 2 Inhaltsfolien besitzen (SECTION_TOO_SMALL)
+ *    - Ausgewogene Abschnittsgrößen: max. Verhältnis 2:1 bei Differenz > 2 (UNBALANCED_SECTIONS)
+ *    - Jeder Abschnitt braucht mindestens 1 Inhalts-Grafik/SVG (SECTION_MISSING_VISUAL)
+ *    - Maximal 3 Inhaltsfolien in Folge ohne Grafik/SVG (CONSECUTIVE_NON_VISUAL_SLIDES)
+ *
+ * 6. Didaktische Folienklassen (MISSING_SLIDE_CLASS) & Ausblicksfolie (MISSING_OUTLOOK_SLIDE):
+ *    - Showcase -> <!-- _class: showcase -->
+ *    - Rückblick & Brücke -> <!-- _class: bridge -->
+ *    - Zusammenfassung -> <!-- _class: summary -->
+ *    - Ausblick (Pflicht nach Zusammenfassung, vor Hausübung in Kap. 01-10) -> <!-- _class: bridge -->
+ *    - Hausübung -> <!-- _class: homework -->
  * ==============================================================================
  */
 
 const fs = require('fs');
 const path = require('path');
 
+function classifyBlockContent(text) {
+  const clean = text.replace(/<!--[\s\S]*?-->/g, '').replace(/^#{1,3}\s+.*$/gm, '').trim();
+  const hasImg = /!\[[^\]]*\]\([^)]+\)/.test(clean);
+  const hasCode = /```[\s\S]*?```/.test(clean);
+  const withoutImgAndCode = clean
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, '')
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/^\s*>\s*/gm, '')
+    .trim();
+  const hasText = withoutImgAndCode.length > 0;
+  const hasTable = /^\s*\|.+\|\s*$/m.test(withoutImgAndCode);
+
+  if (hasImg && !hasCode && !hasText) return 'IMG';
+  if (hasCode && !hasImg && !hasText) return 'CODE';
+  if (!hasImg && !hasCode) return hasTable ? 'TABLE' : 'TEXT';
+  if (hasImg && (hasCode || hasText)) return 'MIX_IMG';
+  return 'MIX_CODE';
+}
+
+function classifySlideLayout(slide) {
+  const isOpener = /^#{1,2}\s+/m.test(slide);
+  if (isOpener) {
+    return { signature: 'OPENER', isOpener: true, isPureText: false };
+  }
+
+  const body = slide.replace(/<!--[\s\S]*?-->/g, '').replace(/^#{1,3}\s+.*$/gm, '');
+  const segments = [];
+  const colRegex = /<div\s+class="columns[^"]*">([\s\S]*?)<\/div>\s*(?=<\/div>|\s*$|\s*\n)/g;
+
+  // Robust tag-depth scanner for top-level <div class="columns..."> blocks
+  let pos = 0;
+  const openColRe = /<div\s+class="columns[^"]*">/g;
+  while (pos < body.length) {
+    openColRe.lastIndex = pos;
+    const m = openColRe.exec(body);
+    if (!m) {
+      const tail = body.slice(pos).trim();
+      if (tail) segments.push(`SINGLE:${classifyBlockContent(tail)}`);
+      break;
+    }
+    const before = body.slice(pos, m.index).trim();
+    if (before) segments.push(`SINGLE:${classifyBlockContent(before)}`);
+
+    // Find matching </div> for this columns container
+    let depth = 1;
+    let scan = m.index + m[0].length;
+    const tagRe = /<\/?div\b[^>]*>/g;
+    tagRe.lastIndex = scan;
+    let endIdx = body.length;
+    let tm;
+    while ((tm = tagRe.exec(body)) !== null) {
+      if (tm[0].startsWith('</div')) {
+        depth--;
+        if (depth === 0) {
+          endIdx = tm.index;
+          pos = tm.index + tm[0].length;
+          break;
+        }
+      } else {
+        depth++;
+      }
+    }
+    if (depth !== 0) pos = body.length;
+
+    const colInner = body.slice(m.index + m[0].length, endIdx);
+    // Extract direct child <div class="..."> columns inside colInner
+    const cols = [];
+    let cPos = 0;
+    const childDivRe = /<div(?:\s+class="([^"]*)")?\s*>/g;
+    while (cPos < colInner.length) {
+      childDivRe.lastIndex = cPos;
+      const cm = childDivRe.exec(colInner);
+      if (!cm) break;
+      let cDepth = 1;
+      const cTagRe = /<\/?div\b[^>]*>/g;
+      cTagRe.lastIndex = cm.index + cm[0].length;
+      let cEnd = colInner.length;
+      let ctm;
+      while ((ctm = cTagRe.exec(colInner)) !== null) {
+        if (ctm[0].startsWith('</div')) {
+          cDepth--;
+          if (cDepth === 0) {
+            cEnd = ctm.index;
+            cPos = ctm.index + ctm[0].length;
+            break;
+          }
+        } else {
+          cDepth++;
+        }
+      }
+      if (cDepth !== 0) cPos = colInner.length;
+      const widthCls = (cm[1] || 'auto').trim().split(/\s+/).find(c => /^(one|two|three|four|five|six)$/.test(c)) || 'auto';
+      const contentCls = classifyBlockContent(colInner.slice(cm.index + cm[0].length, cEnd));
+      cols.push(`${widthCls}:${contentCls}`);
+    }
+    segments.push(`ROW[${cols.join('|')}]`);
+  }
+
+  const hasImg = /!\[[^\]]*\]\([^)]+\)/.test(body);
+  const hasCode = /```/.test(body);
+  const isPureText = !hasImg && !hasCode;
+  return {
+    signature: segments.join(' + ') || 'EMPTY',
+    isOpener: false,
+    isPureText
+  };
+}
+
 function lintSectionDeck(markdownPath) {
   const content = fs.readFileSync(markdownPath, 'utf8');
   const deckDir = path.dirname(markdownPath);
-  const deckName = path.basename(deckDir);
+  const deckName = path.basename(deckDir) === 'Folien'
+    ? path.basename(path.dirname(deckDir))
+    : path.basename(deckDir);
   const slides = content.split(/^---$/m);
 
   const issues = [];
+  const warnings = [];
   const declaredSectionsInAgenda = [];
   const actualSectionSlides = [];
 
   let chapterSlideFound = false;
+  let estimatedMinutes = 0;
+  let contentSlideCount = 0;
+  let prevContentLayout = null;
+  let prevSlideNum = 0;
+  let nonVisualStreak = 0;
+  let activityCount = 0;
+  let frontalMinutesStreak = 0;
+  const chapNumMatchEarly = deckName.match(/^(\d+)_/);
+  const chapNumEarly = chapNumMatchEarly ? parseInt(chapNumMatchEarly[1], 10) : -1;
+  const strictRhythm = chapNumEarly <= 2 || chapNumEarly >= 6;
+  const STRICT_FULLBLEED_CHAPTERS = new Set([0, 1, 2, 6]);
+  const strictFullBleed = STRICT_FULLBLEED_CHAPTERS.has(chapNumEarly);
 
   slides.forEach((slide, idx) => {
     const slideNum = idx + 1;
+    const trimmed = slide.trim();
+    // Skip empty split before leading '---' or pure YAML frontmatter block on slide 1/2
+    if (idx <= 1 && (!trimmed || /^(?:marp|theme|paginate|title|header|footer|style):/m.test(trimmed))) {
+      return;
+    }
 
-    // 1. Kapitel-Titel / Agenda (# Kapitel N: ...)
+    // 1. Kapitel-Titel / Agenda (# Kapitel N: ... oder # Prolog)
     const chapterMatch = slide.match(/#\s+Kapitel\s+(\d+):\s*([^\r\n]+)/i);
-    if (chapterMatch) {
+    const prologMatch = !chapterMatch && chapNumEarly === 0 ? slide.match(/^#\s+(Prolog)\b/im) : null;
+    if (chapterMatch || prologMatch) {
       chapterSlideFound = true;
-      const kapNr = chapterMatch[1];
-      const kapTitle = chapterMatch[2].trim();
+      const kapNr = chapterMatch ? chapterMatch[1] : '0';
 
-      // Background check
-      const bgMatch = slide.match(/!\[bg\s+right[^\]]*\]\(([^)]+)\)/i);
+      if (strictFullBleed && !/<!--\s*_class:\s*title\s*-->/i.test(slide)) {
+        issues.push({
+          slideNum,
+          type: 'MISSING_TITLE_CLASS',
+          message: `Kapitel-Titelfolie #${kapNr} fehlt '<!-- _class: title -->' für das Full-Bleed-Design.`
+        });
+      }
+      if (strictFullBleed && /!\[bg\s+right/i.test(slide)) {
+        issues.push({
+          slideNum,
+          type: 'LEGACY_BG_SPLIT',
+          message: `Kapitel-Titelfolie #${kapNr} nutzt noch '![bg right]' statt Full-Bleed '![bg](...)'.`
+        });
+      }
+
+      // Background check (erlaubt '![bg right](...)' und Full-Bleed '![bg](...)')
+      if (strictFullBleed && /!\[bg\s+right/i.test(slide)) {
+        issues.push({
+          slideNum,
+          type: 'LEGACY_BG_SPLIT',
+          message: `Abschnitt ${secNum} [${secTitle}] nutzt noch '![bg right]' statt Full-Bleed '![bg](...)'.`
+        });
+      }
+      const bgMatch = slide.match(/!\[bg(?:\s+right)?[^\]]*\]\(([^)]+)\)/i);
       if (!bgMatch) {
         issues.push({
           slideNum,
           type: 'MISSING_BG',
-          message: `Kapitelübersicht #${kapNr} fehlt Hintergrundbild: '![bg right](./Titelbild.jpg)' erwartet.`
+          message: `Kapitelübersicht #${kapNr} fehlt Hintergrundbild: '![bg](./Titelbild.jpg)' erwartet.`
         });
       } else {
         const imgPath = path.resolve(deckDir, bgMatch[1].trim());
@@ -68,7 +236,7 @@ function lintSectionDeck(markdownPath) {
       }
 
       // Standard intro
-      if (!/Dieses\s+Kapitel\s+umfasst\s+die\s+folgenden\s+Abschnitte:/i.test(slide)) {
+      if (chapterMatch && !/Dieses\s+Kapitel\s+umfasst\s+die\s+folgenden\s+Abschnitte:/i.test(slide)) {
         issues.push({
           slideNum,
           type: 'MISSING_INTRO',
@@ -85,7 +253,7 @@ function lintSectionDeck(markdownPath) {
         });
       }
 
-      if (declaredSectionsInAgenda.length === 0) {
+      if (chapterMatch && declaredSectionsInAgenda.length === 0) {
         issues.push({
           slideNum,
           type: 'EMPTY_AGENDA',
@@ -94,8 +262,32 @@ function lintSectionDeck(markdownPath) {
       }
     }
 
-    // 2. Abschnittsübersicht (## N.M: ...)
+    // 2. Abschnittsübersicht (## N.M: ... oder ## Überschrift in Prolog/Epilog)
     const sectionMatch = slide.match(/##\s+(\d+\.\d+):\s*([^\r\n]+)/);
+    const h2Match = !sectionMatch && strictFullBleed ? slide.match(/^##\s+([^\r\n]+)/m) : null;
+    if (h2Match) {
+      const h2Title = h2Match[1].trim();
+      if (chapNumEarly === 0 || chapNumEarly === 11) {
+        actualSectionSlides.push({
+          slideNum,
+          secNum: h2Title,
+          secTitle: h2Title
+        });
+      }
+      if (/!\[bg\s+right/i.test(slide)) {
+        issues.push({
+          slideNum,
+          type: 'LEGACY_BG_SPLIT',
+          message: `Abschnittsfolie [${h2Title}] nutzt noch '![bg right]' statt Full-Bleed '![bg](...)'.`
+        });
+      } else if (!/!\[bg[^\]]*\]\(([^)]+)\)/i.test(slide)) {
+        issues.push({
+          slideNum,
+          type: 'MISSING_BG',
+          message: `Abschnittsfolie [${h2Title}] fehlt Full-Bleed-Hintergrundbild '![bg](...)'.`
+        });
+      }
+    }
     if (sectionMatch) {
       const secNum = sectionMatch[1];
       const secTitle = sectionMatch[2].trim();
@@ -106,8 +298,15 @@ function lintSectionDeck(markdownPath) {
         secTitle
       });
 
-      // Background check
-      const bgMatch = slide.match(/!\[bg\s+right[^\]]*\]\(([^)]+)\)/i);
+      // Background check (erlaubt '![bg right](...)' und Full-Bleed '![bg](...)')
+      if (strictFullBleed && /!\[bg\s+right/i.test(slide)) {
+        issues.push({
+          slideNum,
+          type: 'LEGACY_BG_SPLIT',
+          message: `Abschnitt ${secNum} [${secTitle}] nutzt noch '![bg right]' statt Full-Bleed '![bg](...)'.`
+        });
+      }
+      const bgMatch = slide.match(/!\[bg(?:\s+right)?[^\]]*\]\(([^)]+)\)/i);
       if (!bgMatch) {
         issues.push({
           slideNum,
@@ -159,6 +358,135 @@ function lintSectionDeck(markdownPath) {
         });
       }
     }
+
+    // 3b. Didaktische Folienklasse prüfen (<!-- _class: showcase|recap|outlook|summary|homework -->)
+    const classMatch = slide.match(/<!--\s*_class:\s*([a-z0-9_-]+)\s*-->/i);
+    const slideClass = classMatch ? classMatch[1].toLowerCase() : null;
+    if (/###\s+.*Live-Showcase/i.test(slide) && slideClass !== 'showcase') {
+      issues.push({
+        slideNum,
+        type: 'MISSING_SLIDE_CLASS',
+        message: `Showcase-Folie fehlt '<!-- _class: showcase -->'.`
+      });
+    } else if (/###\s+(?:Rückblick\s*&\s*Brücke|Einordnung\s*&\s*Rückblick|Brücke\s*&\s*Rückblick)/i.test(slide) && slideClass !== 'recap') {
+      issues.push({
+        slideNum,
+        type: 'MISSING_SLIDE_CLASS',
+        message: `Brückenfolie fehlt '<!-- _class: recap -->'.`
+      });
+    } else if (/^#{1,3}\s+Ausblick\b/im.test(slide) && slideClass !== 'outlook') {
+      issues.push({
+        slideNum,
+        type: 'MISSING_SLIDE_CLASS',
+        message: `Ausblicksfolie fehlt '<!-- _class: outlook -->'.`
+      });
+    } else if (/^#{1,3}\s+Zusammenfassung/im.test(slide) && slideClass !== 'summary') {
+      issues.push({
+        slideNum,
+        type: 'MISSING_SLIDE_CLASS',
+        message: `Zusammenfassungsfolie fehlt '<!-- _class: summary -->'.`
+      });
+    } else if (/###\s+Hausübung/i.test(slide) && slideClass !== 'homework') {
+      issues.push({
+        slideNum,
+        type: 'MISSING_SLIDE_CLASS',
+        message: `Hausübungsfolie fehlt '<!-- _class: homework -->'.`
+      });
+    }
+
+    // 4. Gewichtete Vortragszeit pro Folientyp schätzen
+    let slideMins = 3.5;
+    if (/###\s+.*(?:Live-Showcase|Hausübung)/i.test(slide)) {
+      slideMins = 0;
+    } else if (/<!--\s*_class:\s*solution\s*-->/i.test(slide)) {
+      slideMins = 1.5;
+      contentSlideCount++;
+    } else if (/<!--\s*_class:\s*activity\s*-->/i.test(slide)) {
+      slideMins = 3.0;
+      contentSlideCount++;
+    } else if (chapterMatch || sectionMatch || /^#\s+Zusammenfassung/im.test(slide)) {
+      slideMins = 0.5;
+    } else if (/###\s+(?:Rückblick\s*&\s*Brücke|Einordnung\s*&\s*Rückblick|Brücke\s*&\s*Rückblick)/i.test(slide)) {
+      slideMins = 2.0;
+      contentSlideCount++;
+    } else if (/###\s+.*(?:Blick unter die Haube|Herleitung|Mathematik|Kontrast)/i.test(slide) || (/!\[[^\]]*\]\(\.\/Diagramme\/[^)]+\.svg\)/i.test(slide) && /\$\$[\s\S]+?\$\$/.test(slide))) {
+      slideMins = 4.5;
+      contentSlideCount++;
+    } else {
+      slideMins = 3.5;
+      contentSlideCount++;
+    }
+    estimatedMinutes += slideMins;
+
+    // 4b. Aktivitäts-Tracking (für Kap. 01-10)
+    if (chapNumEarly >= 1 && chapNumEarly <= 10) {
+      const targetActArr = strictRhythm ? issues : warnings;
+      const isAct = /<!--\s*_class:\s*activity\s*-->/i.test(slide);
+      const isSol = /<!--\s*_class:\s*solution\s*-->/i.test(slide);
+      if (isAct) {
+        activityCount++;
+        frontalMinutesStreak = 0;
+        const nextSlide = slides[idx + 1] || '';
+        if (!/<!--\s*_class:\s*solution\s*-->/i.test(nextSlide)) {
+          targetActArr.push({
+            slideNum,
+            type: 'MISSING_SOLUTION_SLIDE',
+            message: `Auf activity-Folie ${slideNum} folgt keine solution-Folie ('<!-- _class: solution -->').`
+          });
+        }
+      } else if (!isSol && !/###\s+.*(?:Live-Showcase|Hausübung)/i.test(slide)) {
+        frontalMinutesStreak += slideMins;
+        if (frontalMinutesStreak > 35 && frontalMinutesStreak - slideMins <= 35) {
+          targetActArr.push({
+            slideNum,
+            type: 'MAX_FRONTAL_MINUTES_EXCEEDED',
+            message: `Über 35 Min. Frontalvortrag am Stück (~${frontalMinutesStreak.toFixed(0)} Min.) ohne activity-Impuls (bis Folie ${slideNum}).`
+          });
+        }
+      }
+    }
+
+    // 5. Visueller Rhythmus & Layout-Shift prüfen
+    const layout = classifySlideLayout(slide);
+    const isSolutionSlide = /<!--\s*_class:\s*solution\s*-->/i.test(slide);
+    const isActivitySlide = /<!--\s*_class:\s*activity\s*-->/i.test(slide);
+    if (layout.isOpener) {
+      prevContentLayout = null;
+      nonVisualStreak = 0;
+    } else if (!isSolutionSlide) {
+      const targetArr = strictRhythm ? issues : warnings;
+      const hasVisual = /!\[[^\]]*\]\([^)]+\)/.test(slide);
+      if (hasVisual || isActivitySlide) {
+        nonVisualStreak = 0;
+      } else {
+        nonVisualStreak++;
+        if (nonVisualStreak > 3) {
+          targetArr.push({
+            slideNum,
+            type: 'CONSECUTIVE_NON_VISUAL_SLIDES',
+            message: `Mehr als 3 Inhaltsfolien in Folge ohne Grafik/SVG (Folie ${slideNum} ist die ${nonVisualStreak}. Folie ohne Bild).`
+          });
+        }
+      }
+      if (prevContentLayout) {
+        if (prevContentLayout.isPureText && layout.isPureText && !isActivitySlide) {
+          targetArr.push({
+            slideNum,
+            type: 'CONSECUTIVE_TEXT_SLIDES',
+            message: `Zwei reine Textfolien direkt hintereinander (Folie ${prevSlideNum} → ${slideNum}) ohne Grafik/Code zur visuellen Unterbrechung.`
+          });
+        }
+        if (prevContentLayout.signature === layout.signature) {
+          targetArr.push({
+            slideNum,
+            type: 'NO_VISUAL_SHIFT',
+            message: `Kein signifikanter visueller Shift zwischen Folie ${prevSlideNum} und ${slideNum} (beide: ${layout.signature}).`
+          });
+        }
+      }
+      prevContentLayout = layout;
+      prevSlideNum = slideNum;
+    }
   });
 
   // 4. Consistency checks
@@ -185,25 +513,126 @@ function lintSectionDeck(markdownPath) {
     }
   });
 
-  // 5. Kapitel-Brücke & Rückblick-Folie in Abschnitt N.1 (für Kapitel 01 bis 10)
+  // 5. Kapitel-Brücke & Rückblick-Folie vor Abschnitt N.1 (nach Kapitel-Opener / optionaler Showcase-Folie, für Kapitel 01 bis 10)
   const chapNumMatch = deckName.match(/^(\d+)_/);
   const chapNum = chapNumMatch ? parseInt(chapNumMatch[1], 10) : -1;
   if (chapNum >= 1 && chapNum <= 10) {
     const firstSec = actualSectionSlides.find(s => s.secNum === `${chapNum}.1`);
-    if (firstSec) {
-      const nextSec = actualSectionSlides.find(s => s.slideNum > firstSec.slideNum);
-      const endSlideIdx = nextSec ? nextSec.slideNum - 1 : slides.length;
-      const sec1Slides = slides.slice(firstSec.slideNum, endSlideIdx);
-      const hasBridgeSlide = sec1Slides.some(sl =>
+    const chapSlideIdx = slides.findIndex(sl => /#\s+Kapitel\s+\d+:/i.test(sl));
+    if (firstSec && chapSlideIdx !== -1) {
+      const preSecSlides = slides.slice(chapSlideIdx + 1, firstSec.slideNum - 1);
+      const bridgeSlide = preSecSlides.find(sl =>
         /###\s+(?:Rückblick\s*&\s*Brücke|Einordnung\s*&\s*Rückblick|Brücke\s*&\s*Rückblick)/i.test(sl)
       );
-      if (!hasBridgeSlide) {
+      if (!bridgeSlide) {
         issues.push({
           slideNum: firstSec.slideNum,
           type: 'MISSING_BRIDGE_SLIDE',
-          message: `Abschnitt ${chapNum}.1 fehlt eine dedizierte Einstiegs-/Brückenfolie ('### Rückblick & Brücke: ...'), die an den vorigen Termin und das große Ganze anknüpft.`
+          message: `Vor Abschnitt ${chapNum}.1 (nach Kapitel-Opener/Quiz/Showcase) fehlt die dedizierte Einstiegs-/Brückenfolie ('### Rückblick & Brücke: ...').`
+        });
+      } else if (!/!\[[^\]]*\]\(\.\/Diagramme\/[^)]+\.svg\)/i.test(bridgeSlide)) {
+        const bIdx = slides.indexOf(bridgeSlide);
+        issues.push({
+          slideNum: bIdx >= 0 ? bIdx + 1 : firstSec.slideNum,
+          type: 'MISSING_BRIDGE_VISUAL',
+          message: `Brückenfolie in Kapitel ${chapNum} fehlt ein eingebettetes 3-Stufen-Brücken-SVG ('./Diagramme/...svg').`
         });
       }
+    }
+
+    const sumIdx = slides.findIndex(sl => /^#{1,3}\s+Zusammenfassung/im.test(sl));
+    const hwIdx = slides.findIndex(sl => /###\s+Hausübung/i.test(sl));
+    if (sumIdx !== -1 && hwIdx > sumIdx) {
+      const between = slides.slice(sumIdx + 1, hwIdx);
+      const hasOutlook = between.some(sl => /^###\s+Ausblick\b/im.test(sl));
+      if (!hasOutlook) {
+        issues.push({
+          slideNum: hwIdx + 1,
+          type: 'MISSING_OUTLOOK_SLIDE',
+          message: `Zwischen Zusammenfassung und Hausübung in Kapitel ${chapNum} fehlt eine Ausblicksfolie ('### Ausblick: ...' mit '<!-- _class: outlook -->').`
+        });
+      }
+    }
+  }
+
+  // 6. Abschnitts-Mindestgröße & Ausgewogenheit prüfen (ab Kap. 06 als Fehler, 00-05 als Warnung)
+  if (actualSectionSlides.length > 0) {
+    const summaryIdx = slides.findIndex(sl => /^#\s+Zusammenfassung/im.test(sl));
+    const endBound = summaryIdx !== -1 ? summaryIdx + 1 : slides.length + 1;
+    const secCounts = actualSectionSlides.map((sec, idx) => {
+      const nextSlideNum = idx + 1 < actualSectionSlides.length ? actualSectionSlides[idx + 1].slideNum : endBound;
+      const contentCount = Math.max(0, nextSlideNum - sec.slideNum - 1);
+      const secSlides = slides.slice(sec.slideNum, nextSlideNum - 1);
+      const hasVisual = secSlides.some(sl => /!\[[^\]]*\]\([^)]+\)/.test(sl));
+      return { ...sec, contentCount, hasVisual };
+    });
+
+    const targetArr = strictRhythm ? issues : warnings;
+    secCounts.forEach(sc => {
+      if (sc.contentCount < 2) {
+        targetArr.push({
+          slideNum: sc.slideNum,
+          type: 'SECTION_TOO_SMALL',
+          message: `Abschnitt ${sc.secNum} [${sc.secTitle}] hat nur ${sc.contentCount} Inhaltsfolie(n) (mindestens 2 erforderlich).`
+        });
+      }
+      if (!sc.hasVisual) {
+        targetArr.push({
+          slideNum: sc.slideNum,
+          type: 'SECTION_MISSING_VISUAL',
+          message: `Abschnitt ${sc.secNum} [${sc.secTitle}] enthält keine Inhalts-Grafik/SVG.`
+        });
+      }
+    });
+
+    if (secCounts.length >= 2) {
+      const counts = secCounts.map(s => s.contentCount);
+      const minC = Math.min(...counts);
+      const maxC = Math.max(...counts);
+      if (maxC - minC > 2 && (minC === 0 || maxC / minC > 2)) {
+        const dist = secCounts.map(s => `${s.secNum}:${s.contentCount}`).join(', ');
+        targetArr.push({
+          slideNum: 0,
+          type: 'UNBALANCED_SECTIONS',
+          message: `Unausgewogene Abschnittsgrößen (${dist}; Max/Min = ${maxC}/${minC}).`
+        });
+      }
+    }
+
+    const sumIdx = slides.findIndex(sl => /^#{1,3}\s+Zusammenfassung/im.test(sl));
+    const hwIdx = slides.findIndex(sl => /###\s+Hausübung/i.test(sl));
+    if (sumIdx !== -1 && hwIdx > sumIdx) {
+      const between = slides.slice(sumIdx + 1, hwIdx);
+      const hasOutlook = between.some(sl => /^###\s+Ausblick\b/im.test(sl));
+      if (!hasOutlook) {
+        issues.push({
+          slideNum: hwIdx + 1,
+          type: 'MISSING_OUTLOOK_SLIDE',
+          message: `Zwischen Zusammenfassung und Hausübung in Kapitel ${chapNum} fehlt eine Ausblicksfolie ('### Ausblick: ...' mit '<!-- _class: outlook -->').`
+        });
+      }
+    }
+  }
+
+  // 7. Zeitbudget- & Aktivitäts-Check für Kapitel 01 bis 10
+  let budgetMinutes = null;
+  if (chapNum >= 1 && chapNum <= 10) {
+    if (activityCount < 3) {
+      const targetActArr = strictRhythm ? issues : warnings;
+      targetActArr.push({
+        slideNum: 0,
+        type: 'TOO_FEW_ACTIVITIES',
+        message: `Nur ${activityCount} activity-Folie(n) gefunden (mindestens 3 empfohlen).`
+      });
+    }
+    const hasQuiz = [3, 5, 8, 10].includes(chapNum);
+    const hasShowcase = chapNum >= 2;
+    budgetMinutes = 150 - 15 - (hasShowcase ? 15 : 0) - 5 - (hasQuiz ? 15 : 0);
+    if (estimatedMinutes > budgetMinutes) {
+      warnings.push({
+        type: 'TIME_BUDGET_EXCEEDED',
+        message: `Geschätzte Vortragszeit ~${estimatedMinutes.toFixed(1)} Min. überschreitet Netto-Budget von ${budgetMinutes} Min.${hasQuiz ? ' (Quiz-Termin)' : ''}.`
+      });
     }
   }
 
@@ -213,7 +642,11 @@ function lintSectionDeck(markdownPath) {
     chapterSlideFound,
     declaredSectionsCount: declaredSectionsInAgenda.length,
     actualSectionsCount: actualSectionSlides.length,
-    issues
+    estimatedMinutes,
+    budgetMinutes,
+    contentSlideCount,
+    issues,
+    warnings
   };
 }
 
@@ -221,21 +654,21 @@ function main() {
   const args = process.argv.slice(2);
   const target = args[0] || 'all';
 
-  const folienDir = path.resolve('Folien');
+  const kapitelDir = path.resolve('Kapitel');
   const decks = [];
 
   if (target === 'all') {
-    const entries = fs.readdirSync(folienDir).sort();
+    const entries = fs.readdirSync(kapitelDir).sort();
     entries.forEach(e => {
-      const p = path.join(folienDir, e, 'Folien.md');
+      const p = path.join(kapitelDir, e, 'Folien', 'Folien.md');
       if (fs.existsSync(p)) decks.push(p);
     });
   } else if (fs.existsSync(target)) {
     decks.push(path.resolve(target));
   } else {
-    const match = fs.readdirSync(folienDir).find(d => d.startsWith(target));
+    const match = fs.readdirSync(kapitelDir).find(d => d.startsWith(target));
     if (match) {
-      decks.push(path.join(folienDir, match, 'Folien.md'));
+      decks.push(path.join(kapitelDir, match, 'Folien', 'Folien.md'));
     } else {
       console.error(`Target not found: ${target}`);
       process.exit(1);
@@ -251,7 +684,10 @@ function main() {
 
   for (const deck of decks) {
     const res = lintSectionDeck(deck);
-    process.stdout.write(`Prüfe ${res.deckName} (${res.actualSectionsCount} Abschnitte) ... `);
+    const timeInfo = res.budgetMinutes !== null
+      ? `~${res.estimatedMinutes.toFixed(0)}/${res.budgetMinutes} Min.`
+      : `~${res.estimatedMinutes.toFixed(0)} Min.`;
+    process.stdout.write(`Prüfe ${res.deckName} (${res.actualSectionsCount} Abschnitte, ${timeInfo}) ... `);
 
     if (res.issues.length === 0) {
       console.log(`✓ OK (vollständig konform mit Illustrationen)`);
@@ -261,6 +697,12 @@ function main() {
       res.issues.forEach(iss => {
         const prefix = iss.slideNum > 0 ? `  - [Folie ${iss.slideNum}]` : `  - [Allgemein]`;
         console.log(`    ${prefix} ${iss.message}`);
+      });
+    }
+    if (res.warnings && res.warnings.length > 0) {
+      res.warnings.forEach(w => {
+        const prefix = w.slideNum ? `  - [Folie ${w.slideNum}] ` : '';
+        console.log(`    ⚠ [${w.type}] ${prefix}${w.message}`);
       });
     }
   }

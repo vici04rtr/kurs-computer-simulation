@@ -1,0 +1,152 @@
+using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using PixelHeatFDM.Simulation;
+
+namespace PixelHeatFDM.Rendering;
+
+/// <summary>
+/// Performanter Bitmap-Renderer für 2D-Temperaturfelder auf Basis von WriteableBitmap.
+/// Konvertiert Fließkomma-Temperaturwerte via Farbtabelle direkt in den nativen BackBuffer (Bgra32).
+/// </summary>
+public class BitmapHeatRenderer
+{
+    private readonly WriteableBitmap _bitmap;
+    private readonly int _width;
+    private readonly int _height;
+    private readonly uint[] _pixelBuffer;
+    private readonly uint[] _colorLut = new uint[256];
+
+    public WriteableBitmap Bitmap => _bitmap;
+
+    public BitmapHeatRenderer(int width, int height)
+    {
+        _width = width;
+        _height = height;
+        _bitmap = new WriteableBitmap(width, height, 96, 96, PixelFormats.Bgra32, null);
+        _pixelBuffer = new uint[width * height];
+
+        for (int i = 0; i < 256; i++)
+        {
+            float normalized = i / 255f;
+            _colorLut[i] = MapTemperatureToColor(normalized, 0f, 1f);
+        }
+    }
+
+    /// <summary>
+    /// Überträgt das 2D-Temperaturgitter in den Bitmap-BackBuffer.
+    /// </summary>
+    public unsafe void Render(HeatGrid grid, float minTemp = 20.0f, float maxTemp = 100.0f)
+    {
+        float[,] tData = grid.GetCurrentGrid();
+        float range = Math.Max(maxTemp - minTemp, 1e-4f);
+
+        // TODO: [Stufe 1 - Aufgabe 1.2 & 1.3]
+        // Ersetzen Sie den direkten Aufruf von MapTemperatureToColor(...) pro Pixel
+        // durch eine im Konstruktor vorberechnete 256-Farben Look-Up-Table (uint[256] _colorLut)
+        // für O(1)-Speicherzugriff (analog zu Abschnitt 2.4 der Vorlesungsfolien)
+        // und färben Sie Isolator-Wände (Alpha == 0) dunkelgrau (0xFF404040).
+        // Farbkonvertierung in Zwischenpuffer (0 GC Allocations)
+        int index = 0;
+        for (int y = 0; y < _height; y++)
+        {
+            for (int x = 0; x < _width; x++)
+            {
+                float t = tData[x, y];
+                if (float.IsNaN(t) || float.IsInfinity(t))
+                {
+                    _pixelBuffer[index++] = 0xFFFF00FFu;
+                }
+                else if (grid.IsInsulator(x, y))
+                {
+                    _pixelBuffer[index++] = 0xFF404040u;
+                }
+                else
+                {
+                    int lutIndex = (int)Math.Clamp(
+                        (t - minTemp) / range * 255f,
+                        0f,
+                        255f);
+
+                    _pixelBuffer[index++] = _colorLut[lutIndex];
+                }
+            }
+        }
+
+        // Kopieren in den unmanaged BackBuffer der WriteableBitmap
+        _bitmap.Lock();
+        try
+        {
+            uint* backBuffer = (uint*)_bitmap.BackBuffer;
+            int stride = _bitmap.BackBufferStride / 4;
+
+            for (int y = 0; y < _height; y++)
+            {
+                for (int x = 0; x < _width; x++)
+                {
+                    backBuffer[y * stride + x] = _pixelBuffer[y * _width + x];
+                }
+            }
+
+            _bitmap.AddDirtyRect(new Int32Rect(0, 0, _width, _height));
+        }
+        finally
+        {
+            _bitmap.Unlock();
+        }
+    }
+
+    /// <summary>
+    /// Ermittelt die ARGB/BGRA32-Farbe für einen Temperaturwert über eine 4-Stufen-Heatmap.
+    /// 20 °C: Blau (0xFF0000FF)
+    /// 40 °C: Cyan (0xFF00FFFF), 60 °C: Grün (0xFF00FF00)
+    /// 80 °C: Gelb (0xFFFFFF00)
+    /// >= 100 °C: Rot (0xFFFF0000)
+    /// </summary>
+    public static uint MapTemperatureToColor(float temp, float minTemp, float range)
+    {
+        // Numerische Instabilitäten (NaN oder Unendlich) abfangen und auffällig färben (z. B. Magenta)
+        if (float.IsNaN(temp) || float.IsInfinity(temp))
+            return 0xFFFF00FF; // Magenta = Instabilitätsalarm!
+
+        float norm = Math.Clamp((temp - minTemp) / range, 0.0f, 1.0f);
+
+        byte r, g, b;
+
+        if (norm < 0.25f)
+        {
+            // Blau -> Cyan
+            float f = norm / 0.25f;
+            r = 0;
+            g = (byte)(f * 255);
+            b = 255;
+        }
+        else if (norm < 0.5f)
+        {
+            // Cyan -> Grün
+            float f = (norm - 0.25f) / 0.25f;
+            r = 0;
+            g = 255;
+            b = (byte)((1.0f - f) * 255);
+        }
+        else if (norm < 0.75f)
+        {
+            // Grün -> Gelb
+            float f = (norm - 0.5f) / 0.25f;
+            r = (byte)(f * 255);
+            g = 255;
+            b = 0;
+        }
+        else
+        {
+            // Gelb -> Rot
+            float f = (norm - 0.75f) / 0.25f;
+            r = 255;
+            g = (byte)((1.0f - f) * 255);
+            b = 0;
+        }
+
+        // Bgra32 Pack: (A << 24) | (R << 16) | (G << 8) | B
+        return 0xFF000000u | ((uint)r << 16) | ((uint)g << 8) | (uint)b;
+    }
+}

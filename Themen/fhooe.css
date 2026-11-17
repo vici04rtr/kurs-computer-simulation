@@ -2,8 +2,14 @@
 
 @import 'default';
 
-:root {
+:root,
+section {
     --fhooe-blue: #004B96;
+    /* Zentrale OKLCH-Farbwinkel für didaktische Highlight-Rollen */
+    --hue-frame: 252;     /* Struktur & Orientierung: recap, outlook, summary */
+    --hue-activity: 175;  /* Mitmach-Impuls: activity */
+    --hue-solution: 295;  /* Auflösung: solution */
+    --hue-homework: 65;   /* Hausübungs-Klammer: showcase, homework */
 }
 
 section {
@@ -66,10 +72,10 @@ section img[alt~="center"] {
 }
 
 /* FH-Logo: Nur auf Inhaltsfolien anzeigen, Deckblätter (Title & Lead & Folie 1) schützen */
-section:not(.title):not(.lead):not(:first-of-type)::before {
+section:not(.title):not(.lead):not([id="1"])::before {
     content: "";
 
-    display: block;
+    display: block !important;
 
     position: absolute;
 
@@ -81,19 +87,20 @@ section:not(.title):not(.lead):not(:first-of-type)::before {
     width: 4.5rem;
     height: 4.5rem;
 
-    background-color: var(--fhooe-blue);    
-    /* Portables SVG-Signet via Data-URI */
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='20,20 80,20 80,80 50,80 50,50 20,50' fill='white'/></svg>");
+    background-color: #64748b;    
+    /* Portables UAP-Logo via Data-URI */
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 118 44' fill='white'><path d='M2 4 H10 V24 L2 32 Z'/><path d='M3.5 35.5 L11.5 27.5 C13.5 31 16.5 32.5 20 32.5 C25.5 32.5 29 29 29 22 V4 H37 V22 C37 33.5 30 40 20 40 C12.5 40 6.5 38 3.5 35.5 Z'/><path d='M40 40 L54 4 H66 L77 40 H68 L65 30 H52.5 V23 H63 L60 12 L49 40 Z'/><path d='M81 4 H100 C110.5 4 116 9.5 116 17 C116 24.5 110.5 29.5 100 29.5 H92 V22.5 H99.5 C105 22.5 107.5 20 107.5 17 C107.5 13.5 105 11 99.5 11 H89 V40 H81 Z'/></svg>");
     background-repeat: no-repeat;
-    background-size: 65%;
+    background-size: 78%;
     background-position: center;
 }
 
-/* Deckblätter und Folien mit Title-/Lead-Klasse strikt vom FH-Logo befreien */
-/* Inklusive Marpit Advanced Background Wrapper für Folie 1 und bg-Splits */
-section:first-of-type::before,
-section[data-marpit-advanced-background]::before,
-section[data-marpit-advanced-background-split]::before,
+/* Deckblätter und Folien mit Title-/Lead-Klasse strikt vom UAP-Badge befreien */
+/* Bei Full-Bleed (![bg]) zeigt content das Badge; bei bg-Split (![bg right]) zeigt pseudo das Badge ganz rechts */
+section:not(.title):not(.lead):not([id="1"])[data-marpit-advanced-background="background"]::before,
+section:not(.title):not(.lead):not([id="1"])[data-marpit-advanced-background="pseudo"]:not([data-marpit-advanced-background-split])::before,
+section:not(.title):not(.lead):not([id="1"])[data-marpit-advanced-background="content"][data-marpit-advanced-background-split]::before,
+section:not(.title):not(.lead):not([id="1"]):has(h2)::before,
 section[id="1"]::before,
 section#\31::before,
 section.title::before,
@@ -181,4 +188,174 @@ div.box {
     
     padding-left: 0.25rem;
     padding-right: 0.25rem;
+}
+
+section div.columns + :not(footer) {
+    margin-top: 16px;
+}
+
+/* Optischer Ausgleich für Box-to-Box-Abstände (22px statt 16px) */
+section marp-pre + blockquote,
+section pre + blockquote,
+section blockquote + marp-pre,
+section blockquote + pre,
+section.showcase div.columns + blockquote,
+section.homework div.columns + blockquote {
+    margin-top: 22px;
+}
+
+section blockquote {
+    background-color: #f1f5f9;
+    border-left: 4px solid #64748b;
+    padding: 2px 12px;
+    border-radius: 0 6px 6px 0;
+    color: #1e293b;
+    font-size: 0.94em;
+}
+
+/* Didaktische Rahmenfolien-Klassen (MARP _class) – zentrale OKLCH-Ableitung */
+section.recap,
+section.outlook,
+section.summary {
+    --slide-hue: var(--hue-frame);
+}
+section.activity {
+    --slide-hue: var(--hue-activity);
+}
+section.solution {
+    --slide-hue: var(--hue-solution);
+}
+section.showcase,
+section.homework {
+    --slide-hue: var(--hue-homework);
+}
+
+section.showcase,
+section.recap,
+section.outlook,
+section.summary,
+section.activity,
+section.solution,
+section.homework {
+    background-color: oklch(0.985 0.008 var(--slide-hue));
+    box-shadow: inset 10px 0 0 0 oklch(0.52 0.14 var(--slide-hue));
+    color: oklch(0.24 0.04 var(--slide-hue));
+}
+
+section.showcase h1, section.showcase h2, section.showcase h3, section.showcase h4,
+section.recap h1, section.recap h2, section.recap h3, section.recap h4,
+section.outlook h1, section.outlook h2, section.outlook h3, section.outlook h4,
+section.summary h1, section.summary h2, section.summary h3, section.summary h4,
+section.activity h1, section.activity h2, section.activity h3, section.activity h4,
+section.solution h1, section.solution h2, section.solution h3, section.solution h4,
+section.homework h1, section.homework h2, section.homework h3, section.homework h4 {
+    color: oklch(0.42 0.13 var(--slide-hue));
+}
+
+section.showcase header, section.showcase footer, section.showcase blockquote,
+section.recap header, section.recap footer, section.recap blockquote,
+section.outlook header, section.outlook footer, section.outlook blockquote,
+section.summary header, section.summary footer, section.summary blockquote,
+section.activity header, section.activity footer, section.activity blockquote,
+section.solution header, section.solution footer, section.solution blockquote,
+section.homework header, section.homework footer, section.homework blockquote {
+    color: oklch(0.40 0.10 var(--slide-hue));
+}
+
+section.showcase blockquote,
+section.recap blockquote,
+section.outlook blockquote,
+section.summary blockquote,
+section.activity blockquote,
+section.solution blockquote,
+section.homework blockquote {
+    border-left-color: oklch(0.52 0.14 var(--slide-hue));
+    background-color: oklch(0.955 0.022 var(--slide-hue));
+}
+
+section.showcase div.columns > div,
+section.homework div.columns > div {
+    background-color: #ffffff;
+    border: 1px solid oklch(0.86 0.05 var(--slide-hue));
+    border-radius: 10px;
+    padding: 8px 14px;
+    color: #1e293b;
+}
+section.homework div.columns > div {
+    padding: 6px 14px;
+    font-size: 0.94em;
+}
+
+/* Klassen-Icons oben rechts im 4.5rem-Badge (Spezifität > section:not(...)::before) */
+section:not(.title):not(.lead):not([id="1"]).showcase::before,
+section:not(.title):not(.lead):not([id="1"]).recap::before,
+section:not(.title):not(.lead):not([id="1"]).outlook::before,
+section:not(.title):not(.lead):not([id="1"]).activity::before,
+section:not(.title):not(.lead):not([id="1"]).solution::before,
+section:not(.title):not(.lead):not([id="1"]).summary::before,
+section:not(.title):not(.lead):not([id="1"]).homework::before {
+    background-color: oklch(0.52 0.14 var(--slide-hue));
+    background-size: 55%;
+}
+section:not(.title):not(.lead):not([id="1"]).showcase::before {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='2' y='3' width='20' height='14' rx='2'/><line x1='8' y1='21' x2='16' y2='21'/><line x1='12' y1='17' x2='12' y2='21'/></svg>");
+}
+section:not(.title):not(.lead):not([id="1"]).recap::before {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8'/><path d='M3 3v5h5'/><path d='M12 7v5l3 2'/></svg>");
+}
+section:not(.title):not(.lead):not([id="1"]).outlook::before {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><polygon points='16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76'/></svg>");
+}
+section:not(.title):not(.lead):not([id="1"]).activity::before {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><path d='M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3'/><line x1='12' y1='17' x2='12.01' y2='17'/></svg>");
+}
+section:not(.title):not(.lead):not([id="1"]).solution::before {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M9 18h6'/><path d='M10 22h4'/><path d='M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14'/></svg>");
+}
+section:not(.title):not(.lead):not([id="1"]).summary::before {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M9 11l3 3L22 4'/><path d='M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11'/></svg>");
+}
+section:not(.title):not(.lead):not([id="1"]).homework::before {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='16 18 22 12 16 6'/><polyline points='8 6 2 12 8 18'/></svg>");
+}
+
+section.showcase div.columns > div > h4:first-child,
+section.homework div.columns > div > h4:first-child {
+    margin-top: 0;
+}
+section.showcase div.columns > div > ul:last-child,
+section.homework div.columns > div > ul:last-child {
+    margin-bottom: 0;
+}
+
+/* Full-Bleed Hintergrundbilder (![bg](...) ohne right-Split): Textbreite & Typografie ohne CSS-Scrim */
+section.title[data-marpit-advanced-background="content"]:not([data-marpit-advanced-background-split]) {
+    color: #f1f5f9;
+}
+section.title[data-marpit-advanced-background="content"]:not([data-marpit-advanced-background-split]) h1,
+section.title[data-marpit-advanced-background="content"]:not([data-marpit-advanced-background-split]) h2,
+section.title[data-marpit-advanced-background="content"]:not([data-marpit-advanced-background-split]) h3 {
+    color: #ffffff;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+    max-width: 50%;
+}
+section.title[data-marpit-advanced-background="content"]:not([data-marpit-advanced-background-split]) p,
+section.title[data-marpit-advanced-background="content"]:not([data-marpit-advanced-background-split]) ul,
+section.title[data-marpit-advanced-background="content"]:not([data-marpit-advanced-background-split]) ol {
+    color: #e2e8f0;
+    max-width: 50%;
+}
+section.title[data-marpit-advanced-background="content"]:not([data-marpit-advanced-background-split]) li {
+    color: #e2e8f0;
+}
+section.title[data-marpit-advanced-background="content"]:not([data-marpit-advanced-background-split]) code {
+    background-color: rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+}
+
+section:not(.title)[data-marpit-advanced-background="content"]:not([data-marpit-advanced-background-split]) h2,
+section:not(.title)[data-marpit-advanced-background="content"]:not([data-marpit-advanced-background-split]) p,
+section:not(.title)[data-marpit-advanced-background="content"]:not([data-marpit-advanced-background-split]) ul,
+section:not(.title)[data-marpit-advanced-background="content"]:not([data-marpit-advanced-background-split]) ol {
+    max-width: 50%;
 }

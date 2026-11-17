@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-45 0 570 380" width="570" height="380">
+  
+  <defs>
+    <style>
+      .hdr { font-family: 'Segoe UI', Arial, sans-serif; font-size: 16px; font-weight: bold; text-anchor: middle; }
+      .sub { font-family: 'Segoe UI', Arial, sans-serif; font-size: 13.5px; font-weight: 600; text-anchor: middle; }
+      .lbl { font-family: 'Segoe UI', Arial, sans-serif; font-size: 13.5px; font-weight: 600; }
+      .code { font-family: 'Consolas', monospace; font-size: 13.5px; font-weight: bold; text-anchor: middle; }
+      .code-l { font-family: 'Consolas', monospace; font-size: 13px; font-weight: bold; }
+      .math { font-family: 'Consolas', monospace; font-size: 13.5px; font-weight: bold; text-anchor: middle; }
+    </style>
+    <marker id="arr-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#2563eb" />
+    </marker>
+    <marker id="arr-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#16a34a" />
+    </marker>
+    <marker id="arr-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#d97706" />
+    </marker>
+    <marker id="arr-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#dc2626" />
+    </marker>
+    <marker id="arr-slate" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#475569" />
+    </marker>
+    <radialGradient id="grad-amb" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#3b82f6" />
+      <stop offset="100%" stop-color="#2563eb" />
+    </radialGradient>
+    <radialGradient id="grad-diff" cx="35%" cy="30%" r="65%">
+      <stop offset="0%" stop-color="#60a5fa" />
+      <stop offset="65%" stop-color="#1d4ed8" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </radialGradient>
+    <radialGradient id="grad-spec" cx="35%" cy="30%" r="35%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="30%" stop-color="#93c5fd" />
+      <stop offset="70%" stop-color="#1e293b" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </radialGradient>
+    <radialGradient id="grad-phong" cx="35%" cy="30%" r="65%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="18%" stop-color="#93c5fd" />
+      <stop offset="55%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#1e3a8a" />
+    </radialGradient>
+  </defs>
+
+  <defs>
+    <linearGradient id="gouraud-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1d4ed8" />
+      <stop offset="33%" stop-color="#3b82f6" />
+      <stop offset="66%" stop-color="#60a5fa" />
+      <stop offset="100%" stop-color="#93c5fd" />
+    </linearGradient>
+  </defs>
+  <rect x="-35" y="8" width="550" height="364" rx="12" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2" />
+  <text x="240" y="36" class="hdr" fill="#15803d">Smooth Shading (GL_SMOOTH): Interpolation an Eckpunkten</text>
+
+  <polygon points="15,245 125,185 240,160 355,185 465,245 465,285 355,225 240,200 125,225 15,285" fill="url(#gouraud-grad)" stroke="#1e40af" stroke-width="1.5" />
+
+  <circle cx="15" cy="245" r="5" fill="#0f172a" />
+  <line x1="15" y1="245" x2="-15" y2="175" stroke="#16a34a" stroke-width="3" marker-end="url(#arr-green)" />
+
+  <circle cx="125" cy="185" r="5" fill="#0f172a" />
+  <line x1="125" y1="185" x2="102" y2="105" stroke="#16a34a" stroke-width="3" marker-end="url(#arr-green)" />
+  <text x="100" y="94" class="code" fill="#15803d">n_v1</text>
+
+  <circle cx="240" cy="160" r="5" fill="#0f172a" />
+  <line x1="240" y1="160" x2="240" y2="78" stroke="#16a34a" stroke-width="3" marker-end="url(#arr-green)" />
+  <text x="240" y="68" class="code" fill="#15803d">n_v2</text>
+
+  <circle cx="355" cy="185" r="5" fill="#0f172a" />
+  <line x1="355" y1="185" x2="378" y2="105" stroke="#16a34a" stroke-width="3" marker-end="url(#arr-green)" />
+  <text x="382" y="94" class="code" fill="#15803d">n_v3</text>
+
+  <circle cx="465" cy="245" r="5" fill="#0f172a" />
+  <line x1="465" y1="245" x2="495" y2="175" stroke="#16a34a" stroke-width="3" marker-end="url(#arr-green)" />
+
+  <rect x="-20" y="296" width="520" height="62" rx="8" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.8" />
+  <text x="240" y="320" class="code" fill="#15803d">gl.ShadeModel(OpenGL.GL_SMOOTH) &#8594; Bilineare Farbinterpolation</text>
+  <text x="240" y="344" class="sub" fill="#334155">Weicher Verlauf für gekrümmte Flächen (Zylinder &amp; Kugeln)</text>
+</svg>

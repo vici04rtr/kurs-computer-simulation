@@ -66,12 +66,8 @@ function getMarpCommand() {
 // 2. Paths & Directories
 // ------------------------------------------------------------------------------
 const ROOT_DIR = path.resolve(__dirname, '..');
-const FOLIEN_DIR = path.join(ROOT_DIR, 'Folien');
-const UEBUNGEN_DIR = path.join(ROOT_DIR, 'Uebungen');
+const KAPITEL_DIR = path.join(ROOT_DIR, 'Kapitel');
 const THEMEN_CSS = path.join(ROOT_DIR, 'Themen', 'fhooe.css');
-const EXPORT_DIR = path.join(ROOT_DIR, 'Export');
-const EXPORT_FOLIEN_DIR = path.join(EXPORT_DIR, 'Folien');
-const EXPORT_UEBUNGEN_DIR = path.join(EXPORT_DIR, 'Uebungen');
 
 // ------------------------------------------------------------------------------
 // 3. Helper Functions
@@ -154,8 +150,8 @@ function showHelp() {
 Usage: node Skripte/export_to_pdf.js [Optionen]
 
 Optionen:
-  --slides, -s          Exportiert alle MARP-Foliensätze (Folien/*/Folien.md)
-  --exercises, -e       Exportiert alle Aufgabenblätter (Uebungen/*/Aufgabenblatt.md)
+  --slides, -s          Exportiert alle MARP-Foliensätze (Kapitel/*/Moodle/*_Folien.pdf)
+  --exercises, -e       Exportiert alle Aufgabenblätter (Kapitel/*/Moodle/*_Aufgabenblatt.pdf)
   --all, -a             Exportiert Foliensätze und Aufgabenblätter (Standard)
   --chapter <XX>, -c    Exportiert nur ein bestimmtes Folienkapitel (z.B. '00', '01', '07')
   --termin <XX>, -t     Exportiert nur ein bestimmtes Aufgabenblatt (z.B. '01', '05', '10')
@@ -173,11 +169,14 @@ Beispiele:
 // ------------------------------------------------------------------------------
 // 5. MARP Slides Export
 // ------------------------------------------------------------------------------
-function exportSingleSlideDeck(dirName, marpCmd) {
-  const inputMd = path.join(FOLIEN_DIR, dirName, 'Folien.md');
-  const localPdf = path.join(FOLIEN_DIR, dirName, 'Folien.pdf');
-  const sanitizedName = sanitizeUmlauts(dirName);
-  const exportPdf = path.join(EXPORT_FOLIEN_DIR, `${sanitizedName}_Folien.pdf`);
+function exportSingleSlideDeck(dirName, mdFileName, marpCmd) {
+  const folienDir = path.join(KAPITEL_DIR, dirName, 'Folien');
+  const moodleDir = path.join(KAPITEL_DIR, dirName, 'Moodle');
+  fs.mkdirSync(moodleDir, { recursive: true });
+  const inputMd = path.join(folienDir, mdFileName);
+  const sanitizedDir = sanitizeUmlauts(dirName);
+  const baseDeckName = sanitizeUmlauts(path.basename(mdFileName, '.md'));
+  const exportPdf = path.join(moodleDir, `${sanitizedDir}_${baseDeckName}.pdf`);
 
   if (!fs.existsSync(inputMd)) {
     throw new Error(`Datei nicht gefunden: ${inputMd}`);
@@ -189,18 +188,41 @@ function exportSingleSlideDeck(dirName, marpCmd) {
     env.CHROME_PATH = browserExec;
   }
 
-  // CLI-Aufruf marp-cli
-  const cmd = `${marpCmd} --no-stdin --theme-set "${THEMEN_CSS}" --allow-local-files --pdf "${inputMd}" -o "${localPdf}"`;
-  execSync(cmd, { stdio: 'pipe', env });
+  const hasSolutions = /<!--\s*_class:\s*solution\s*-->/i.test(fs.readFileSync(inputMd, 'utf8'));
 
-  // Synchronkopie in den Export-Ordner
-  fs.copyFileSync(localPdf, exportPdf);
+  if (!hasSolutions) {
+    const cmd = `${marpCmd} --no-stdin --theme-set "${THEMEN_CSS}" --allow-local-files --pdf "${inputMd}" -o "${exportPdf}"`;
+    execSync(cmd, { stdio: 'pipe', env });
+    const stat = fs.statSync(exportPdf);
+    return {
+      dirName: mdFileName === 'Folien.md' ? dirName : `${dirName} (${mdFileName})`,
+      sanitizedName: `${sanitizedDir}_${baseDeckName}`,
+      exportPdf,
+      size: stat.size
+    };
+  }
+
+  // 1. Vorab-Moodle-PDF ohne Lösungsfolien
+  const rawMd = fs.readFileSync(inputMd, 'utf8');
+  const studentSlides = rawMd.split(/^---$/m).filter(s => !/<!--\s*_class:\s*solution\s*-->/i.test(s));
+  const tmpStudentMd = path.join(folienDir, `.tmp_student_${mdFileName}`);
+  fs.writeFileSync(tmpStudentMd, studentSlides.join('---'), 'utf8');
+  try {
+    const cmdStudent = `${marpCmd} --no-stdin --theme-set "${THEMEN_CSS}" --allow-local-files --pdf "${tmpStudentMd}" -o "${exportPdf}"`;
+    execSync(cmdStudent, { stdio: 'pipe', env });
+  } finally {
+    if (fs.existsSync(tmpStudentMd)) fs.unlinkSync(tmpStudentMd);
+  }
+
+  // 2. Vollständiges Lösungs-PDF (*_Folien_Loesungen.pdf)
+  const solutionPdf = exportPdf.replace(/\.pdf$/i, '_Loesungen.pdf');
+  const cmdSol = `${marpCmd} --no-stdin --theme-set "${THEMEN_CSS}" --allow-local-files --pdf "${inputMd}" -o "${solutionPdf}"`;
+  execSync(cmdSol, { stdio: 'pipe', env });
 
   const stat = fs.statSync(exportPdf);
   return {
-    dirName,
-    sanitizedName,
-    localPdf,
+    dirName: mdFileName === 'Folien.md' ? `${dirName} (+ Loesungen)` : `${dirName} (${mdFileName})`,
+    sanitizedName: `${sanitizedDir}_${baseDeckName}`,
     exportPdf,
     size: stat.size
   };
@@ -208,14 +230,12 @@ function exportSingleSlideDeck(dirName, marpCmd) {
 
 async function exportAllSlides(filterChapter = null) {
   console.log('\n' + '='.repeat(70));
-  console.log(' MARP-FOLIENSÄTZE EXPORTIEREN');
+  console.log(' MARP-FOLIENSÄTZE (INKL. ANHÄNGE) EXPORTIEREN');
   console.log('='.repeat(70));
 
-  fs.mkdirSync(EXPORT_FOLIEN_DIR, { recursive: true });
-
   const marpCmd = getMarpCommand();
-  const allDirs = fs.readdirSync(FOLIEN_DIR)
-    .filter(d => fs.statSync(path.join(FOLIEN_DIR, d)).isDirectory() && /^\d\d_/.test(d))
+  const allDirs = fs.readdirSync(KAPITEL_DIR)
+    .filter(d => fs.statSync(path.join(KAPITEL_DIR, d)).isDirectory() && /^\d\d_/.test(d) && fs.existsSync(path.join(KAPITEL_DIR, d, 'Folien', 'Folien.md')))
     .sort();
 
   let targetDirs = allDirs;
@@ -228,20 +248,33 @@ async function exportAllSlides(filterChapter = null) {
     }
   }
 
+  const deckTasks = [];
+  for (const dir of targetDirs) {
+    const folienDir = path.join(KAPITEL_DIR, dir, 'Folien');
+    deckTasks.push({ dir, mdFileName: 'Folien.md' });
+    const anhaenge = fs.readdirSync(folienDir)
+      .filter(f => /^Folien_Anhang_.*\.md$/i.test(f))
+      .sort();
+    for (const anh of anhaenge) {
+      deckTasks.push({ dir, mdFileName: anh });
+    }
+  }
+
   const results = [];
-  for (let idx = 0; idx < targetDirs.length; idx++) {
-    const dir = targetDirs[idx];
-    const progress = `[${idx + 1}/${targetDirs.length}]`;
-    process.stdout.write(`  ${progress} Konvertiere Folien: ${dir} ... `);
+  for (let idx = 0; idx < deckTasks.length; idx++) {
+    const { dir, mdFileName } = deckTasks[idx];
+    const label = mdFileName === 'Folien.md' ? dir : `${dir}/${mdFileName}`;
+    const progress = `[${idx + 1}/${deckTasks.length}]`;
+    process.stdout.write(`  ${progress} Konvertiere Folien: ${label} ... `);
     const start = Date.now();
     try {
-      const res = exportSingleSlideDeck(dir, marpCmd);
+      const res = exportSingleSlideDeck(dir, mdFileName, marpCmd);
       const elapsed = ((Date.now() - start) / 1000).toFixed(1);
       console.log(`OK (${formatBytes(res.size)}, ${elapsed}s)`);
       results.push({ ...res, success: true, elapsed });
     } catch (err) {
       console.log(`FEHLER: ${err.message}`);
-      results.push({ dirName: dir, success: false, error: err.message });
+      results.push({ dirName: label, success: false, error: err.message });
     }
   }
 
@@ -581,18 +614,16 @@ async function exportAllExercises(browser, filterTermin = null) {
   console.log(' AUFGABENBLÄTTER EXPORTIEREN');
   console.log('='.repeat(70));
 
-  fs.mkdirSync(EXPORT_UEBUNGEN_DIR, { recursive: true });
-
-  const allDirs = fs.readdirSync(UEBUNGEN_DIR)
-    .filter(d => fs.statSync(path.join(UEBUNGEN_DIR, d)).isDirectory() && /^Termin_\d\d_/.test(d))
+  const allDirs = fs.readdirSync(KAPITEL_DIR)
+    .filter(d => fs.statSync(path.join(KAPITEL_DIR, d)).isDirectory() && /^\d\d_/.test(d) && fs.existsSync(path.join(KAPITEL_DIR, d, 'Uebung', 'Aufgabenblatt.md')))
     .sort();
 
   let targetDirs = allDirs;
   if (filterTermin !== null) {
     const formatted = padZero(filterTermin, 2);
-    targetDirs = allDirs.filter(d => d.startsWith(`Termin_${formatted}_`));
+    targetDirs = allDirs.filter(d => d.startsWith(`${formatted}_`));
     if (targetDirs.length === 0) {
-      console.warn(`[WARNUNG] Kein Aufgabenblatt mit Termin-Nummer '${filterTermin}' gefunden.`);
+      console.warn(`[WARNUNG] Kein Aufgabenblatt mit Kapitel-Nummer '${filterTermin}' gefunden.`);
       return [];
     }
   }
@@ -606,35 +637,33 @@ async function exportAllExercises(browser, filterTermin = null) {
     process.stdout.write(`  ${progress} Konvertiere Aufgabenblatt: ${dir} ... `);
     const start = Date.now();
 
-    const mdPath = path.join(UEBUNGEN_DIR, dir, 'Aufgabenblatt.md');
-    const localPdf = path.join(UEBUNGEN_DIR, dir, 'Aufgabenblatt.pdf');
+    const uebungDir = path.join(KAPITEL_DIR, dir, 'Uebung');
+    const moodleDir = path.join(KAPITEL_DIR, dir, 'Moodle');
+    fs.mkdirSync(moodleDir, { recursive: true });
+    const mdPath = path.join(uebungDir, 'Aufgabenblatt.md');
 
-    // Termin-Nummer extrahieren (z.B. "01")
-    const numMatch = dir.match(/^Termin_(\d\d)/);
+    const numMatch = dir.match(/^(\d\d)_/);
     const terminNum = numMatch ? numMatch[1] : 'XX';
 
-    // Zielpfade in Export
-    const exportPdfShort = path.join(EXPORT_UEBUNGEN_DIR, `Termin_${terminNum}_Aufgabenblatt.pdf`);
-    const exportPdfNamed = path.join(EXPORT_UEBUNGEN_DIR, `${dir}_Aufgabenblatt.pdf`);
+    const sanitizedDir = sanitizeUmlauts(dir);
+    const exportPdfNamed = path.join(moodleDir, `${sanitizedDir}_Aufgabenblatt.pdf`);
 
     try {
       const mdContent = fs.readFileSync(mdPath, 'utf8');
 
-      // Titel aus erster H1-Überschrift ermitteln
       const h1Match = mdContent.match(/^#\s+(.+)$/m);
       const title = h1Match ? h1Match[1].trim() : `Aufgabenblatt ${terminNum}`;
 
       const renderedBody = renderAufgabenblattToHtml(mdContent, title);
       const fullHtml = buildExerciseDocument(renderedBody, title);
 
-      // Temporäre HTML-Datei speichern für Puppeteer
-      const tmpHtml = path.join(UEBUNGEN_DIR, dir, '.tmp_rendered.html');
+      const tmpHtml = path.join(uebungDir, '.tmp_rendered.html');
       fs.writeFileSync(tmpHtml, fullHtml, 'utf8');
 
       await page.goto('file:///' + tmpHtml.replace(/\\/g, '/'), { waitUntil: 'networkidle0' });
 
       await page.pdf({
-        path: localPdf,
+        path: exportPdfNamed,
         format: 'A4',
         landscape: false,
         printBackground: true,
@@ -659,24 +688,17 @@ async function exportAllExercises(browser, filterTermin = null) {
         `
       });
 
-      // Aufräumen
       if (fs.existsSync(tmpHtml)) {
         fs.unlinkSync(tmpHtml);
       }
 
-      // Synchron in Export-Ordner spiegeln (sowohl kurz 'Termin_XX_Aufgabenblatt.pdf' als auch lang)
-      fs.copyFileSync(localPdf, exportPdfShort);
-      fs.copyFileSync(localPdf, exportPdfNamed);
-
-      const stat = fs.statSync(localPdf);
+      const stat = fs.statSync(exportPdfNamed);
       const elapsed = ((Date.now() - start) / 1000).toFixed(1);
       console.log(`OK (${formatBytes(stat.size)}, ${elapsed}s)`);
 
       results.push({
         dirName: dir,
         title,
-        localPdf,
-        exportPdfShort,
         exportPdfNamed,
         size: stat.size,
         success: true,
@@ -693,73 +715,7 @@ async function exportAllExercises(browser, filterTermin = null) {
 }
 
 // ------------------------------------------------------------------------------
-// 7. Generate Export/README.md for Moodle
-// ------------------------------------------------------------------------------
-function generateExportReadme(slideResults, exerciseResults) {
-  const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
-
-  let md = `# Exportierte PDF-Unterlagen für Moodle\n\n`;
-  md += `**Lehrveranstaltung:** Systemsimulation / Digitaler Zwilling  \n`;
-  md += `**Studiengang:** B.Sc. Automatisierungstechnik, 5. Semester  \n`;
-  md += `**Institution:** Fachhochschule Oberösterreich – Campus Wels  \n`;
-  md += `**Zuletzt generiert:** ${now} UTC  \n\n`;
-  md += `Dieses Verzeichnis enthält alle druckreifen, vollständigen PDF-Unterlagen für den Upload auf Moodle.\n\n`;
-
-  // 1. Foliensätze
-  md += `## 1. MARP-Foliensätze (16:9 Präsentationen)\n\n`;
-  md += `| Kapitel | Thema | Moodle-Export-Datei | Dateigröße | Lokale Datei |\n`;
-  md += `| :--- | :--- | :--- | :---: | :--- |\n`;
-
-  const folienDirs = fs.readdirSync(FOLIEN_DIR)
-    .filter(d => fs.statSync(path.join(FOLIEN_DIR, d)).isDirectory() && /^\d\d_/.test(d))
-    .sort();
-
-  for (const dir of folienDirs) {
-    const sanitized = sanitizeUmlauts(dir);
-    const exportFile = `${sanitized}_Folien.pdf`;
-    const exportPath = path.join(EXPORT_FOLIEN_DIR, exportFile);
-    const localPath = path.join('Folien', dir, 'Folien.pdf').replace(/\\/g, '/');
-    let sizeStr = '-';
-    if (fs.existsSync(exportPath)) {
-      sizeStr = formatBytes(fs.statSync(exportPath).size);
-    }
-    const cleanTitle = dir.replace(/^\d\d_/, '').replace(/_/g, ' ');
-    const kapNr = dir.substring(0, 2);
-    md += `| **${kapNr}** | ${cleanTitle} | [\`${exportFile}\`](Folien/${exportFile}) | ${sizeStr} | \`${localPath}\` |\n`;
-  }
-
-  // 2. Aufgabenblätter
-  md += `\n## 2. Aufgabenblätter (DIN A4 Handouts)\n\n`;
-  md += `| Termin | Thema | Moodle-Export-Datei | Dateigröße | Lokale Datei |\n`;
-  md += `| :--- | :--- | :--- | :---: | :--- |\n`;
-
-  const uebungenDirs = fs.readdirSync(UEBUNGEN_DIR)
-    .filter(d => fs.statSync(path.join(UEBUNGEN_DIR, d)).isDirectory() && /^Termin_\d\d_/.test(d))
-    .sort();
-
-  for (const dir of uebungenDirs) {
-    const numMatch = dir.match(/^Termin_(\d\d)/);
-    const terminNum = numMatch ? numMatch[1] : 'XX';
-    const exportFileShort = `Termin_${terminNum}_Aufgabenblatt.pdf`;
-    const exportPathShort = path.join(EXPORT_UEBUNGEN_DIR, exportFileShort);
-    const localPath = path.join('Uebungen', dir, 'Aufgabenblatt.pdf').replace(/\\/g, '/');
-    let sizeStr = '-';
-    if (fs.existsSync(exportPathShort)) {
-      sizeStr = formatBytes(fs.statSync(exportPathShort).size);
-    }
-    const cleanTitle = dir.replace(/^Termin_\d\d_/, '').replace(/_/g, ' ');
-    md += `| **Termin ${terminNum}** | ${cleanTitle} | [\`${exportFileShort}\`](Uebungen/${exportFileShort}) | ${sizeStr} | \`${localPath}\` |\n`;
-  }
-
-  md += `\n---\n*Automatisch generiert mit \`node Skripte/export_to_pdf.js\`*\n`;
-
-  const readmePath = path.join(EXPORT_DIR, 'README.md');
-  fs.writeFileSync(readmePath, md, 'utf8');
-  console.log(`\n[OK] Moodle-Übersicht aktualisiert: Export/README.md`);
-}
-
-// ------------------------------------------------------------------------------
-// 8. Main Entry Point
+// 7. Main Entry Point
 // ------------------------------------------------------------------------------
 async function main() {
   const options = parseArgs();
@@ -807,10 +763,7 @@ async function main() {
     }
   }
 
-  // 3. Moodle-Übersicht Export/README.md aktualisieren
-  generateExportReadme(slideResults, exerciseResults);
-
-  // 4. Abschluss-Zusammenfassung
+  // 3. Abschluss-Zusammenfassung
   const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
   console.log('\n' + '='.repeat(70));
   console.log(` EXPORT ABGESCHLOSSEN in ${totalElapsed}s`);

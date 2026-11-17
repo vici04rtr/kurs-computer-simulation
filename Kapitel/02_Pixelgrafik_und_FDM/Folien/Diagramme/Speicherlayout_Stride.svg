@@ -1,0 +1,256 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 560" width="1000" height="560">
+  <defs>
+    <style>
+      .title { font-family: 'Segoe UI', Arial, sans-serif; font-size: 20px; font-weight: bold; fill: #1e293b; }
+      .subtitle { font-family: 'Segoe UI', Arial, sans-serif; font-size: 14px; fill: #64748b; }
+      .section-hdr { font-family: 'Segoe UI', Arial, sans-serif; font-size: 15px; font-weight: bold; fill: #0f172a; }
+      .cell-text { font-family: 'Segoe UI', Arial, sans-serif; font-size: 13px; fill: #334155; text-anchor: middle; dominant-baseline: middle; }
+      .cell-text-bold { font-family: 'Segoe UI', Arial, sans-serif; font-size: 13px; font-weight: bold; fill: #0f172a; text-anchor: middle; dominant-baseline: middle; }
+      .badge-text { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12.5px; font-weight: bold; fill: #ffffff; text-anchor: middle; dominant-baseline: middle; }
+      .code-font { font-family: 'Consolas', 'Courier New', monospace; font-size: 13px; fill: #0f172a; }
+      .arrow-dash { stroke: #f59e0b; stroke-width: 2; stroke-dasharray: 4,4; fill: none; marker-end: url(#arrowhead-amber); }
+    </style>
+
+    <marker id="arrowhead-amber" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#f59e0b" />
+    </marker>
+    <marker id="arrowhead-gray" markerWidth="6" markerHeight="5" refX="5" refY="2.5" orient="auto">
+      <polygon points="0 0, 6 2.5, 0 5" fill="#64748b" />
+    </marker>
+
+    <filter id="card-shadow" x="-5%" y="-5%" width="110%" height="110%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  <!-- Hintergrund -->
+  <rect width="1000" height="560" fill="#f8fafc" rx="12" />
+  <rect x="1" y="1" width="998" height="558" fill="none" stroke="#e2e8f0" stroke-width="2" rx="11" />
+
+  <!-- Kopfbereich -->
+  <text x="35" y="38" class="title">Speicherlayout: 2D-Rasterbild ➔ 1D-BackBuffer im RAM</text>
+  <text x="35" y="58" class="subtitle">Abbildung der 2D-Pixelkoordinaten (x, y) auf lineare Byte-Adressen bei 32-Bit Farbtiefe (Bgra32)</text>
+
+  <!-- ========================================== -->
+  <!-- LINKE KARTE: 2D-PIXELRASTER                -->
+  <!-- ========================================== -->
+  <g transform="translate(35, 75)" filter="url(#card-shadow)">
+    <rect width="445" height="340" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5" />
+    <text x="20" y="28" class="section-hdr">1. 2D-Bildmatrix (Koordinatensystem)</text>
+
+    <!-- X-Achse -->
+    <line x1="55" y1="55" x2="365" y2="55" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrowhead-gray)" />
+    <text x="378" y="56" class="cell-text" style="font-weight: bold; fill: #64748b;">x</text>
+    <text x="205" y="45" class="cell-text" style="fill: #64748b;">Breite W (Spalten 0 … W-1)</text>
+
+    <!-- Y-Achse -->
+    <line x1="45" y1="65" x2="45" y2="285" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrowhead-gray)" />
+    <text x="45" y="302" class="cell-text" style="font-weight: bold; fill: #64748b;">y</text>
+
+    <!-- Zeile 0 -->
+    <g transform="translate(62, 70)">
+      <rect x="0" y="0" width="54" height="35" fill="#f1f5f9" stroke="#cbd5e1" rx="3" />
+      <text x="27" y="17.5" class="cell-text">(0, 0)</text>
+
+      <rect x="59" y="0" width="54" height="35" fill="#f1f5f9" stroke="#cbd5e1" rx="3" />
+      <text x="86" y="17.5" class="cell-text">(1, 0)</text>
+
+      <rect x="118" y="0" width="54" height="35" fill="#f1f5f9" stroke="#cbd5e1" rx="3" />
+      <text x="145" y="17.5" class="cell-text">(2, 0)</text>
+
+      <text x="190" y="17.5" class="cell-text" style="font-size: 15px;">…</text>
+
+      <rect x="208" y="0" width="76" height="35" fill="#f1f5f9" stroke="#cbd5e1" rx="3" />
+      <text x="246" y="17.5" class="cell-text">(W-1, 0)</text>
+
+      <text x="332" y="17.5" class="cell-text" style="fill: #94a3b8;">Zeile 0</text>
+    </g>
+
+    <!-- Zeile 1 -->
+    <g transform="translate(62, 115)">
+      <rect x="0" y="0" width="54" height="35" fill="#f1f5f9" stroke="#cbd5e1" rx="3" />
+      <text x="27" y="17.5" class="cell-text">(0, 1)</text>
+
+      <rect x="59" y="0" width="54" height="35" fill="#f1f5f9" stroke="#cbd5e1" rx="3" />
+      <text x="86" y="17.5" class="cell-text">(1, 1)</text>
+
+      <rect x="118" y="0" width="54" height="35" fill="#f1f5f9" stroke="#cbd5e1" rx="3" />
+      <text x="145" y="17.5" class="cell-text">(2, 1)</text>
+
+      <text x="190" y="17.5" class="cell-text" style="font-size: 15px;">…</text>
+
+      <rect x="208" y="0" width="76" height="35" fill="#f1f5f9" stroke="#cbd5e1" rx="3" />
+      <text x="246" y="17.5" class="cell-text">(W-1, 1)</text>
+
+      <text x="332" y="17.5" class="cell-text" style="fill: #94a3b8;">Zeile 1</text>
+    </g>
+
+    <!-- Vertikale Auslassungspunkte -->
+    <text x="89" y="168" class="cell-text" style="font-size: 16px;">⋮</text>
+    <text x="148" y="168" class="cell-text" style="font-size: 16px;">⋮</text>
+    <text x="207" y="168" class="cell-text" style="font-size: 16px;">⋮</text>
+    <text x="308" y="168" class="cell-text" style="font-size: 16px;">⋮</text>
+
+    <!-- Zeile y mit Target-Pixel (x, y) -->
+    <g transform="translate(62, 185)">
+      <rect x="0" y="0" width="54" height="40" fill="#f8fafc" stroke="#94a3b8" rx="3" />
+      <text x="27" y="20" class="cell-text">(0, y)</text>
+
+      <text x="84" y="20" class="cell-text" style="font-size: 15px;">…</text>
+
+      <rect x="110" y="0" width="66" height="40" fill="#fef3c7" stroke="#f59e0b" stroke-width="2.5" rx="4" />
+      <text x="143" y="20" class="cell-text-bold" style="fill: #b45309;">(x, y)</text>
+
+      <text x="192" y="20" class="cell-text" style="font-size: 15px;">…</text>
+
+      <rect x="208" y="0" width="76" height="40" fill="#f8fafc" stroke="#94a3b8" rx="3" />
+      <text x="246" y="20" class="cell-text">(W-1, y)</text>
+
+      <text x="332" y="20" class="cell-text" style="fill: #0284c7; font-weight: bold;">Zeile y</text>
+    </g>
+
+    <!-- Vertikale Auslassungspunkte -->
+    <text x="89" y="243" class="cell-text" style="font-size: 16px;">⋮</text>
+    <text x="207" y="243" class="cell-text" style="font-size: 16px;">⋮</text>
+    <text x="308" y="243" class="cell-text" style="font-size: 16px;">⋮</text>
+
+    <!-- Letzte Zeile H-1 -->
+    <g transform="translate(62, 255)">
+      <rect x="0" y="0" width="54" height="35" fill="#f1f5f9" stroke="#cbd5e1" rx="3" />
+      <text x="27" y="17.5" class="cell-text">(0, H-1)</text>
+
+      <text x="84" y="17.5" class="cell-text" style="font-size: 15px;">…</text>
+      <text x="192" y="17.5" class="cell-text" style="font-size: 15px;">…</text>
+
+      <rect x="208" y="0" width="78" height="35" fill="#f1f5f9" stroke="#cbd5e1" rx="3" />
+      <text x="247" y="17.5" class="cell-text">(W-1, H-1)</text>
+
+      <text x="334" y="17.5" class="cell-text" style="fill: #94a3b8;">Zeile H-1</text>
+    </g>
+
+    <text x="20" y="322" class="cell-text" style="text-anchor: start; fill: #64748b;">
+      Höhe H: Zeilen 0 bis H-1 | Pro Pixel: 4 Bytes (32 Bit Farbtiefe)
+    </text>
+  </g>
+
+  <!-- ========================================== -->
+  <!-- RECHTE KARTE: 1D-SPEICHERLAYOUT (RAM)      -->
+  <!-- ========================================== -->
+  <g transform="translate(500, 75)" filter="url(#card-shadow)">
+    <rect width="465" height="340" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5" />
+    <text x="20" y="28" class="section-hdr">2. Linearer Adressraum im RAM (BackBuffer)</text>
+
+    <!-- Speicherbalken Zeile 0 -->
+    <g transform="translate(20, 48)">
+      <rect x="0" y="0" width="230" height="28" fill="#e2e8f0" stroke="#94a3b8" rx="3" />
+      <text x="115" y="14" class="cell-text">Zeile 0 (Pixel 0 … W-1)</text>
+      <rect x="230" y="0" width="34" height="28" fill="#cbd5e1" stroke="#94a3b8" stroke-dasharray="2,2" rx="2" />
+      <text x="247" y="14" class="cell-text" style="fill: #64748b;">Pad</text>
+      <text x="276" y="14" class="cell-text" style="text-anchor: start; fill: #64748b;">Offset: 0</text>
+    </g>
+
+    <!-- Speicherbalken Zeile 1 -->
+    <g transform="translate(20, 82)">
+      <rect x="0" y="0" width="230" height="28" fill="#e2e8f0" stroke="#94a3b8" rx="3" />
+      <text x="115" y="14" class="cell-text">Zeile 1 (Pixel 0 … W-1)</text>
+      <rect x="230" y="0" width="34" height="28" fill="#cbd5e1" stroke="#94a3b8" stroke-dasharray="2,2" rx="2" />
+      <text x="247" y="14" class="cell-text" style="fill: #64748b;">Pad</text>
+      <text x="276" y="14" class="cell-text" style="text-anchor: start; fill: #64748b;">Offset: 1·Stride</text>
+    </g>
+
+    <!-- Vertikale Pünktchen -->
+    <text x="135" y="126" class="cell-text" style="font-size: 16px;">⋮</text>
+
+    <!-- Stride Klammer / Maßlinie -->
+    <line x1="398" y1="48" x2="398" y2="110" stroke="#0284c7" stroke-width="1.5" />
+    <line x1="393" y1="48" x2="403" y2="48" stroke="#0284c7" stroke-width="1.5" />
+    <line x1="393" y1="110" x2="403" y2="110" stroke="#0284c7" stroke-width="1.5" />
+    <text x="408" y="80" class="cell-text" style="text-anchor: start; fill: #0284c7; font-weight: bold;">Stride</text>
+
+    <!-- Zeile y - aktiv im Detail -->
+    <g transform="translate(20, 138)">
+      <rect x="0" y="0" width="425" height="148" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5" rx="6" />
+      <text x="14" y="19" class="cell-text-bold" style="text-anchor: start; fill: #166534;">
+        Zeile y (pBackBuffer + y · Stride) — Zoom auf Pixel (x, y):
+      </text>
+
+      <!-- Zoom auf Pixel (x, y) mit 4 Bytes -->
+      <g transform="translate(24, 32)">
+        <rect x="0" y="0" width="84" height="44" fill="#3b82f6" rx="4" />
+        <text x="42" y="13" class="badge-text">Byte 0</text>
+        <text x="42" y="32" class="badge-text">B (Blau)</text>
+
+        <rect x="98" y="0" width="84" height="44" fill="#22c55e" rx="4" />
+        <text x="140" y="13" class="badge-text">Byte 1</text>
+        <text x="140" y="32" class="badge-text">G (Grün)</text>
+
+        <rect x="196" y="0" width="84" height="44" fill="#ef4444" rx="4" />
+        <text x="238" y="13" class="badge-text">Byte 2</text>
+        <text x="238" y="32" class="badge-text">R (Rot)</text>
+
+        <rect x="294" y="0" width="84" height="44" fill="#475569" rx="4" />
+        <text x="336" y="13" class="badge-text">Byte 3</text>
+        <text x="336" y="32" class="badge-text">A (Alpha)</text>
+      </g>
+
+      <!-- Beschriftung des Target-Pixels im Speicher -->
+      <rect x="77" y="84" width="270" height="24" fill="#fef3c7" stroke="#f59e0b" stroke-width="1" rx="3" />
+      <text x="212" y="96" class="cell-text-bold" style="fill: #92400e;">
+        Exakter Offset = y · Stride + x · 4 Bytes
+      </text>
+
+      <!-- 32-Bit Darstellung (uint) -->
+      <text x="24" y="128" class="code-font" style="fill: #334155;">
+        Als 32-Bit uint:
+      </text>
+      <rect x="165" y="116" width="236" height="22" fill="#1e293b" rx="3" />
+      <text x="283" y="127" class="code-font" style="fill: #38bdf8; text-anchor: middle; dominant-baseline: middle;">
+        uint pixel = 0xAARRGGBB;
+      </text>
+    </g>
+
+    <!-- Zeile H-1 ganz unten im Speicher -->
+    <g transform="translate(20, 298)">
+      <rect x="0" y="0" width="230" height="28" fill="#e2e8f0" stroke="#94a3b8" rx="3" />
+      <text x="115" y="14" class="cell-text">Zeile H-1 (Letzte Zeile)</text>
+      <text x="276" y="14" class="cell-text" style="text-anchor: start; fill: #64748b;">(H-1)·Stride</text>
+    </g>
+  </g>
+
+  <!-- Verbindung von Target-Pixel (x, y) links zu Offset rechts -->
+  <path d="M 240 280 C 330 310, 425 268, 515 250" class="arrow-dash" />
+
+  <!-- ========================================== -->
+  <!-- UNTERE FORMEL- & ERKENNTNIS-LEISTE         -->
+  <!-- ========================================== -->
+  <g transform="translate(35, 435)" filter="url(#card-shadow)">
+    <rect width="930" height="100" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5" />
+
+    <!-- Formel 1: Offset -->
+    <g transform="translate(25, 20)">
+      <rect x="0" y="0" width="280" height="60" fill="#f0f9ff" stroke="#bae6fd" rx="6" />
+      <text x="15" y="24" class="subtitle" style="font-weight: bold; fill: #0369a1;">Lineare Byte-Adresse (Offset):</text>
+      <text x="15" y="48" class="code-font" style="font-size: 14px; font-weight: bold; fill: #0c4a6e;">
+        Offset = y * Stride + x * 4;
+      </text>
+    </g>
+
+    <!-- Formel 2: Zeigerzugriff -->
+    <g transform="translate(325, 20)">
+      <rect x="0" y="0" width="280" height="60" fill="#f0fdf4" stroke="#bbf7d0" rx="6" />
+      <text x="15" y="24" class="subtitle" style="font-weight: bold; fill: #15803d;">C# Direct Pointer Access:</text>
+      <text x="15" y="48" class="code-font" style="font-size: 13px; font-weight: bold; fill: #14532d;">
+        byte* p = pBase + y*stride + x*4;
+      </text>
+    </g>
+
+    <!-- Formel 3: Stride Definition -->
+    <g transform="translate(625, 20)">
+      <rect x="0" y="0" width="280" height="60" fill="#fefce8" stroke="#fef08a" rx="6" />
+      <text x="15" y="24" class="subtitle" style="font-weight: bold; fill: #a16207;">Stride (Zeilenbreite in Bytes):</text>
+      <text x="15" y="48" class="code-font" style="font-size: 13px; font-weight: bold; fill: #713f12;">
+        Stride = Width * 4 (+ Padding)
+      </text>
+    </g>
+  </g>
+</svg>
