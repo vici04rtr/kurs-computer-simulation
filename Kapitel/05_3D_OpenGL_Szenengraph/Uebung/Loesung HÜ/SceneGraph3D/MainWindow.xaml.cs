@@ -55,7 +55,7 @@ public partial class MainWindow : Window
     // ------------------------------------------------------------------ Stufe 2: Claw Crane
     private readonly ClawCraneScene _crane = new();
     private readonly HashSet<Key> _pressedKeys = new();
-    private bool _suppressCraneUi = false;
+    private bool _suppressCraneUi = false; // gegen Rückkopplung
 
     private readonly DispatcherTimer _gameTimer = new() { Interval = TimeSpan.FromMilliseconds(16) };
     private readonly Stopwatch _clock = Stopwatch.StartNew();
@@ -168,7 +168,7 @@ public partial class MainWindow : Window
         UpdateJointTransforms();
     }
 
-    private void UpdateJointTransforms()
+    private void UpdateJointTransforms() // Vorwärtskinematik
     {
         // Basis: steht auf dem Boden
         _baseNode.Tx = 0.0f;
