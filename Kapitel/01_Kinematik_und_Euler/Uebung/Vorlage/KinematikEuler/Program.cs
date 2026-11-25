@@ -1,5 +1,6 @@
 using KinematikEuler.Models;
 using KinematikEuler.Solvers;
+using KinematikEuler.Output;
 
 namespace KinematikEuler;
 
@@ -124,9 +125,8 @@ internal class Program
         Console.WriteLine("   3. CSV-Export nach simulation_cylinder.csv und ASCII-Übersichtstabelle.");
     }
 
-    /// <summary>
-    /// Stufe 2: Track B - Artillery Duel mit Newton-Drag & Wind (Gerüst).
-    /// </summary>
+
+    /// <summary>Stufe B: Track B - Retro Artillery Duel mit Newton-Drag & Wind.</summary>
     private static void RunTrackB_ArtilleryGame()
     {
         Console.WriteLine("\n--- [Stufe 2 Track B] Retro Artillery Duel ---");

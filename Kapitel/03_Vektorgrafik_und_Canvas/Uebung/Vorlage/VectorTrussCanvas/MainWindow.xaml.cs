@@ -27,13 +27,16 @@ public partial class MainWindow : Window
 
         TrussCanvas.Children.Clear();
 
-        // 1. Transformationsmatrix aus Bounding Box und Canvas-Größe aktualisieren
-        var (xMin, xMax, yMin, yMax) = _truss.GetBounds();
-        _transform.MarginX = 70.0;
-        _transform.MarginY = 70.0;
-        _transform.Update(xMin, xMax, yMin, yMax, TrussCanvas.ActualWidth, TrussCanvas.ActualHeight);
+        // 1. Transformationsmatrix NUR aktualisieren, wenn KEIN Knoten gezogen wird (Fix für Jittering)
+        if (_draggedNode == null)
+        {
+            var (xMin, xMax, yMin, yMax) = _truss.GetBounds();
+            _transform.MarginX = 70.0;
+            _transform.MarginY = 70.0;
+            _transform.Update(xMin, xMax, yMin, yMax, TrussCanvas.ActualWidth, TrussCanvas.ActualHeight);
+        }
 
-        // 2. Stäbe zeichnen (Lines)
+        // 2. Stäbe zeichnen (Lines) & Euklidische Stablängen mit Label anzeigen
         foreach (var bar in _truss.Bars)
         {
             var nodeA = _truss.Nodes.FirstOrDefault(n => n.Id == bar.NodeAId);
@@ -51,6 +54,24 @@ public partial class MainWindow : Window
                 StrokeThickness = 3.0
             };
             TrussCanvas.Children.Add(line);
+
+            // Euklidische Stablänge in Weltkoordinaten [m]
+            double lengthM = Math.Sqrt(Math.Pow(nodeB.X - nodeA.X, 2) + Math.Pow(nodeB.Y - nodeA.Y, 2));
+
+            // Stablängen-Label am Mittelpunkt des Stabes platzieren
+            Point pMid = new Point((pA.X + pB.X) / 2.0, (pA.Y + pB.Y) / 2.0);
+            var barLabel = new TextBlock
+            {
+                Text = $"{lengthM:F2} m",
+                Foreground = Brushes.Yellow,
+                FontSize = 10,
+                FontWeight = FontWeights.Bold,
+                Background = new SolidColorBrush(Color.FromArgb(160, 20, 20, 20))
+            };
+            barLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            Canvas.SetLeft(barLabel, pMid.X - barLabel.DesiredSize.Width / 2.0);
+            Canvas.SetTop(barLabel, pMid.Y - barLabel.DesiredSize.Height / 2.0);
+            TrussCanvas.Children.Add(barLabel);
         }
 
         // 3. Auflager zeichnen
@@ -60,12 +81,10 @@ public partial class MainWindow : Window
 
             if (node.IsFixedSupport)
             {
-                // Festlager: Dreieckssymbol unter dem Knoten
                 DrawSupportSymbol(pos, isFixed: true);
             }
             else if (node.IsRollerSupport)
             {
-                // Loselager: Dreieckssymbol mit Rollenlinie
                 DrawSupportSymbol(pos, isFixed: false);
             }
         }
@@ -83,16 +102,16 @@ public partial class MainWindow : Window
                 Fill = new SolidColorBrush(Color.FromRgb(0, 210, 255)),
                 Stroke = Brushes.White,
                 StrokeThickness = 1.5,
-                Tag = node // Für Hit-Testing merken
+                Tag = node
             };
             Canvas.SetLeft(ellipse, pos.X - radius);
             Canvas.SetTop(ellipse, pos.Y - radius);
             TrussCanvas.Children.Add(ellipse);
 
-            // Knotenlabel
+            // Knotenlabel mit Millimeter-Präzision im Status/Display
             var label = new TextBlock
             {
-                Text = $"{node.Name} ({node.X:F1}; {node.Y:F1})",
+                Text = $"{node.Name} ({node.X:F2}; {node.Y:F2})",
                 Foreground = Brushes.LightGreen,
                 FontSize = 10,
                 FontWeight = FontWeights.SemiBold
@@ -112,7 +131,7 @@ public partial class MainWindow : Window
             VectorArrow.AddForceArrow(TrussCanvas, pos, load.Fx, load.Fy, lengthPx: 60.0);
         }
 
-        // 6. DIN 406 Bemaßungskette für die Gesamtlänge
+        // 6. Horizontale DIN 406 Bemaßungskette für die Gesamtlänge
         var leftNode = _truss.Nodes.OrderBy(n => n.X).First();
         var rightNode = _truss.Nodes.OrderByDescending(n => n.X).First();
         Point pLeft = _transform.WorldToScreen(leftNode.X, 0.0);
@@ -136,25 +155,18 @@ public partial class MainWindow : Window
         //    alle Tests in VectorTrussCanvas.Tests per 'dotnet test' prüfen (Aufgabe 1.4).
         // =====================================================================
 
-        // =====================================================================
-        // TODO: [Stufe 2 Track A: 2D-CAD Tragwerks-Inspektor & Last-Editor]
-        // 1. Drittes Industriemodell CreateCantileverCraneTruss() (>= 10 Knoten)
-        //    in TrussGeometry.cs ergänzen + 1.0m-Hintergrundgitter zeichnen.
-        // 2. Zweistufige horizontale DIN-406-Bemaßung: Innere Maßkette für alle
-        //    Einzel-Feldweiten am Untergurt (+30 px) + äußere Gesamtmaßkette (+60 px).
-        // 3. Interaktives Ziehen der Kraftpfeilspitzen (Fx, Fy) + Mausrad-Zoom & Pan.
-        // 4. JSON-Export und JSON-Import (System.Text.Json) + Brushes Freeze().
-        // =====================================================================
+        // 7. Vertikale DIN 406 Bemaßungskette für die Gesamthöhe (Stufe A)
+        var bottomNode = _truss.Nodes.OrderBy(n => n.Y).First();
+        var topNode = _truss.Nodes.OrderByDescending(n => n.Y).First();
+        Point pBottom = _transform.WorldToScreen(leftNode.X, bottomNode.Y);
+        Point pTop = _transform.WorldToScreen(leftNode.X, topNode.Y);
+        double dimX = pLeft.X - 35.0;
+        double totalHeight = topNode.Y - bottomNode.Y;
 
-        // =====================================================================
-        // TODO: [Stufe 2 Track B: Poly Bridge Blueprint-Baumeister]
-        // 1. Start-Szene CreateCanyonBlueprintLevel() mit Felswand-Polygonen +
-        //    0.5m-Konstruktionsraster mit Grid-Snapping (Math.Round(val * 2.0) / 2.0).
-        // 2. Gestrichelte Stab-Vorschau mit Maximallänge L_max = 4.0m (grün/rot) +
-        //    Live-Baubudget-Anzeige (Summe L_i * 1000 EUR/m vs. Maximalbudget).
-        // 3. Interaktives Knoten-Setzen, Stäbe-Spannen und Löschen (Entf/Rechtsklick).
-        // 4. JSON-Export und JSON-Import (System.Text.Json) + Brushes Freeze().
-        // =====================================================================
+        VectorArrow.AddVerticalDimensionLine(
+            TrussCanvas, pBottom, pTop, dimX, 
+            $"{totalHeight:F2} m");
+
     }
 
     private void DrawSupportSymbol(Point pos, bool isFixed)
@@ -162,7 +174,6 @@ public partial class MainWindow : Window
         double h = 18.0;
         double w = 14.0;
 
-        // Dreieck
         var triangle = new Polygon
         {
             Points = new PointCollection
@@ -179,7 +190,6 @@ public partial class MainWindow : Window
 
         if (!isFixed)
         {
-            // Loselager: Rollenlinie
             var rollerLine = new Line
             {
                 X1 = pos.X - w / 2 - 2, Y1 = pos.Y + h + 3,
@@ -202,7 +212,6 @@ public partial class MainWindow : Window
 
         Point mousePos = e.GetPosition(TrussCanvas);
 
-        // Nächsten Knoten im Umkreis von 20 Pixeln finden
         _draggedNode = _truss.Nodes.FirstOrDefault(n =>
         {
             Point pScreen = _transform.WorldToScreen(n.X, n.Y);
@@ -224,10 +233,11 @@ public partial class MainWindow : Window
         Point mousePos = e.GetPosition(TrussCanvas);
         var (worldX, worldY) = _transform.ScreenToWorld(mousePos.X, mousePos.Y);
 
-        _draggedNode.X = Math.Round(worldX, 2);
-        _draggedNode.Y = Math.Round(worldY, 2);
+        // Millimeter-Auflösung (3 Nachkommastellen)
+        _draggedNode.X = Math.Round(worldX, 3);
+        _draggedNode.Y = Math.Round(worldY, 3);
 
-        TxtInfo.Text = $"Knoten {_draggedNode.Name}: X = {_draggedNode.X:F2} m | Y = {_draggedNode.Y:F2} m";
+        TxtInfo.Text = $"Knoten {_draggedNode.Name}: X = {_draggedNode.X:F3} m | Y = {_draggedNode.Y:F3} m";
         Redraw();
     }
 
@@ -238,7 +248,7 @@ public partial class MainWindow : Window
             _draggedNode = null;
             TrussCanvas.ReleaseMouseCapture();
             TxtInfo.Text = "Knoten platziert. Auto-Fit aktiv.";
-            Redraw();
+            Redraw(); // Nach dem Loslassen wird Auto-Fit einmalig ausgeführt
         }
     }
 
@@ -261,5 +271,10 @@ public partial class MainWindow : Window
 
         TxtInfo.Text = "Modell zurückgesetzt.";
         Redraw();
+    }
+    private void BtnOpenSketcher_Click(object sender, RoutedEventArgs e)
+    {
+        var sketcherWindow = new BridgeSketcherWindow();
+        sketcherWindow.Show();
     }
 }

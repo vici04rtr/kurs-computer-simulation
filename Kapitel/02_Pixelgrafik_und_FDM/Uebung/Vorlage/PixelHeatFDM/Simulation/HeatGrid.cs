@@ -40,6 +40,7 @@ public class HeatGrid
 
     private float[,] _tCurrent;
     private float[,] _tNext;
+    private readonly float[,] _alphaMap;
 
     /// <summary>
     /// CFL-Diffusionszahl: s = alpha * dt / (dx^2).
@@ -61,8 +62,15 @@ public class HeatGrid
     {
         Width = width;
         Height = height;
+
         _tCurrent = new float[width, height];
         _tNext = new float[width, height];
+        _alphaMap = new float[width, height];
+
+        for (int y = 0; y < Height; y++)
+            for (int x = 0; x < Width; x++)
+                _alphaMap[x, y] = Alpha;
+
         Reset();
     }
 
@@ -113,35 +121,61 @@ public class HeatGrid
     /// </summary>
     public void Step()
     {
-        float s = StabilityFactor;
+        float dx2 = Dx * Dx;
 
-        // FDM-Berechnung für innere Gitterpunkte (1 .. Width-2, 1 .. Height-2)
         for (int y = 1; y < Height - 1; y++)
         {
             for (int x = 1; x < Width - 1; x++)
             {
                 float tCenter = _tCurrent[x, y];
-                float tRight  = _tCurrent[x + 1, y];
-                float tLeft   = _tCurrent[x - 1, y];
-                float tUp     = _tCurrent[x, y + 1];
-                float tDown   = _tCurrent[x, y - 1];
 
-                // Laplace-Operator in 2D
-                float laplace = (tRight + tLeft + tUp + tDown - 4.0f * tCenter);
+                if (_alphaMap[x, y] == 0f)
+                {
+                    _tNext[x, y] = tCenter;
+                    continue;
+                }
 
-                _tNext[x, y] = tCenter + s * laplace;
+                float tRight = _alphaMap[x + 1, y] == 0f
+                    ? tCenter : _tCurrent[x + 1, y];
+
+                float tLeft = _alphaMap[x - 1, y] == 0f
+                    ? tCenter : _tCurrent[x - 1, y];
+
+                float tUp = _alphaMap[x, y + 1] == 0f
+                    ? tCenter : _tCurrent[x, y + 1];
+
+                float tDown = _alphaMap[x, y - 1] == 0f
+                    ? tCenter : _tCurrent[x, y - 1];
+
+                float laplace =
+                    tRight + tLeft + tUp + tDown - 4f * tCenter;
+
+                float sLocal = _alphaMap[x, y] * Dt / dx2;
+
+                _tNext[x, y] = tCenter + sLocal * laplace;
             }
         }
 
-        // Randbedingungen anwenden
         ApplyBoundaryConditions(_tNext);
 
         if (MaintainHotspot)
         {
-            ApplyHotspot(_tNext);
+            int mx = Width / 2;
+            int my = Height / 2;
+            int radius = Math.Max(2, Width / 16);
+
+            for (int y = my - radius; y <= my + radius; y++)
+                for (int x = mx - radius; x <= mx + radius; x++)
+                {
+                    if (x >= 0 && x < Width &&
+                        y >= 0 && y < Height &&
+                        _alphaMap[x, y] > 0f)
+                    {
+                        _tNext[x, y] = 100f;
+                    }
+                }
         }
 
-        // Puffer tauschen (Pointer-Swap, 0 GC-Allokationen)
         (_tCurrent, _tNext) = (_tNext, _tCurrent);
     }
 
@@ -175,6 +209,38 @@ public class HeatGrid
                 grid[Width - 1, y] = grid[Width - 2, y];
             }
         }
+    }
+
+    public void PaintHotspot(int gx, int gy, int radius = 2)
+    {
+        for (int y = gy - radius; y <= gy + radius; y++)
+            for (int x = gx - radius; x <= gx + radius; x++)
+            {
+                if (x < 0 || x >= Width || y < 0 || y >= Height)
+                    continue;
+
+                _alphaMap[x, y] = Alpha;
+                _tCurrent[x, y] = 100f;
+                _tNext[x, y] = 100f;
+            }
+    }
+
+    public void PaintInsulator(int gx, int gy, int radius = 2)
+    {
+        for (int y = gy - radius; y <= gy + radius; y++)
+            for (int x = gx - radius; x <= gx + radius; x++)
+            {
+                if (x < 0 || x >= Width || y < 0 || y >= Height)
+                    continue;
+
+                _alphaMap[x, y] = 0f;
+                _tNext[x, y] = _tCurrent[x, y];
+            }
+    }
+
+    public bool IsInsulator(int x, int y)
+    {
+        return _alphaMap[x, y] == 0f;
     }
 
     /// <summary>

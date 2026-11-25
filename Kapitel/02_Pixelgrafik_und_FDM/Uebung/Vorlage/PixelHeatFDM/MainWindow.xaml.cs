@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using PixelHeatFDM.Rendering;
@@ -14,6 +15,8 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _timer;
 
     private int _stepCount = 0;
+    private bool _leftPainting;
+    private bool _rightPainting;
 
     public MainWindow()
     {
@@ -103,6 +106,35 @@ public partial class MainWindow : Window
         TxtStatus.Text = "Simulation zurückgesetzt.";
     }
 
+    private void HeatImage_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        _leftPainting = e.ChangedButton == MouseButton.Left;
+        _rightPainting = e.ChangedButton == MouseButton.Right;
+
+        HeatImage.CaptureMouse();
+        PaintAtMousePosition(e.GetPosition(HeatImage));
+    }
+
+    private void HeatImage_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (_leftPainting || _rightPainting)
+        {
+            PaintAtMousePosition(e.GetPosition(HeatImage));
+        }
+    }
+
+    private void HeatImage_MouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton == MouseButton.Left)
+            _leftPainting = false;
+
+        if (e.ChangedButton == MouseButton.Right)
+            _rightPainting = false;
+
+        if (!_leftPainting && !_rightPainting)
+            HeatImage.ReleaseMouseCapture();
+    }
+
     private void RbBoundary_Checked(object sender, RoutedEventArgs e)
     {
         if (_grid == null) return;
@@ -115,5 +147,23 @@ public partial class MainWindow : Window
         {
             _grid.Boundary = BoundaryMode.DirichletFixed;
         }
+    }
+
+    private void PaintAtMousePosition(Point pos)
+    {
+        if (HeatImage.ActualWidth <= 0 || HeatImage.ActualHeight <= 0)
+            return;
+
+        int gx = (int)(pos.X / HeatImage.ActualWidth * _grid.Width);
+        int gy = (int)(pos.Y / HeatImage.ActualHeight * _grid.Height);
+
+        gx = Math.Clamp(gx, 0, _grid.Width - 1);
+        gy = Math.Clamp(gy, 0, _grid.Height - 1);
+
+        if (_leftPainting)
+            _grid.PaintHotspot(gx, gy, 2);
+
+        if (_rightPainting)
+            _grid.PaintInsulator(gx, gy, 2);
     }
 }

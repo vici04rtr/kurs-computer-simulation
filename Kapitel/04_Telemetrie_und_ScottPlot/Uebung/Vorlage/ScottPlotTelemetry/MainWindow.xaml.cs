@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
+using System.Windows.Controls;
 using ScottPlot;
 using ScottPlot.Plottables;
 using ScottPlotTelemetry.Data;
@@ -17,12 +18,35 @@ public partial class MainWindow : Window
     private readonly Random _random = new(42);
 
     private readonly DataStreamer _streamer;
+    private readonly DataStreamer _referenceStreamer; // 2. Kanal für Sollwert
     private readonly HorizontalLine _meanLine;
     private readonly HorizontalLine _upperLine;
     private readonly HorizontalLine _lowerLine;
 
     private double _simTime = 0.0;
     private bool _injectAnomalyFlag = false;
+
+    // Merkt sich, ob Stufe A lief, als auf Track B umgeschaltet wurde
+    private bool _stageAWasRunning = true;
+
+    // Vorallokiertes Array für das gleitende Fenster (0 Byte GC-Allokation im Loop)
+    private readonly double[] _windowCopy = new double[BufferCapacity];
+
+    // Entprellung & Anomalie-Zähler
+    private int _anomalyCount = 0;
+    private int _anomalyHoldTicks = 0;
+
+    // Statische, eingefrorene Brushes zur Vermeidung von GC-Leaks im 50-Hz-Loop
+    private static readonly SolidColorBrush NormalBgBrush = FreezeBrush(new SolidColorBrush(System.Windows.Media.Color.FromRgb(27, 77, 27)));
+    private static readonly SolidColorBrush NormalFgBrush = FreezeBrush(new SolidColorBrush(System.Windows.Media.Color.FromRgb(152, 251, 152)));
+    private static readonly SolidColorBrush AnomalyBgBrush = FreezeBrush(new SolidColorBrush(System.Windows.Media.Color.FromRgb(160, 30, 30)));
+    private static readonly SolidColorBrush AnomalyFgBrush = FreezeBrush(new SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 120, 120)));
+
+    private static SolidColorBrush FreezeBrush(SolidColorBrush brush)
+    {
+        brush.Freeze();
+        return brush;
+    }
 
     public MainWindow()
     {
@@ -39,10 +63,15 @@ public partial class MainWindow : Window
         Plot1.Plot.Axes.Color(ScottPlot.Color.FromHex("#CCCCCC"));
         Plot1.Plot.Grid.MajorLineColor = ScottPlot.Color.FromHex("#2E2E2E");
 
-        // High-Performance DataStreamer (ScottPlot 5)
+        // High-Performance DataStreamer (Kanal 1: Messsignal)
         _streamer = Plot1.Plot.Add.DataStreamer(BufferCapacity);
         _streamer.ViewScrollLeft();
         _streamer.Color = ScottPlot.Color.FromHex("#00D2FF");
+
+        // High-Performance DataStreamer (Kanal 2: Ideales Referenzsignal in Grün/Orange)
+        _referenceStreamer = Plot1.Plot.Add.DataStreamer(BufferCapacity);
+        _referenceStreamer.ViewScrollLeft();
+        _referenceStreamer.Color = ScottPlot.Color.FromHex("#00FF88");
 
         // Horizontale Welford-Statistiklinien
         _meanLine = Plot1.Plot.Add.HorizontalLine(100.0);
@@ -75,9 +104,11 @@ public partial class MainWindow : Window
         _simTime += 0.02;
 
         // Signalmodell: Harmonische Schwingung (0.5 Hz) mit normalverteiltem Rauschen
-        // y(t) = 100 + 15 * sin(2*pi*0.5*t) + Rauschen
         double noise = (_random.NextDouble() - 0.5) * 6.0;
         double signal = 100.0 + 15.0 * Math.Sin(2.0 * Math.PI * 0.5 * _simTime) + noise;
+
+        // Ideales Referenzsignal (ohne Rauschen)
+        double referenceSignal = 100.0 + 15.0 * Math.Sin(2.0 * Math.PI * 0.5 * _simTime);
 
         if (_injectAnomalyFlag)
         {
@@ -97,6 +128,28 @@ public partial class MainWindow : Window
         //   ungestörte Referenzsignal y_ref(t) = 100 + 15 * sin(2 * pi * 0.5 * t) hinzu.
         // ScottPlot Streamer befüllen
         _streamer.Add(signal);
+        _referenceStreamer.Add(referenceSignal);
+
+        // Gleitende Fenster-Auswertung (letzte 10 Sekunden / 500 Samples)
+        int currentCount = _buffer.Count;
+        if (currentCount > 0)
+        {
+            _buffer.CopyTo(_windowCopy);
+            double windowSum = 0;
+            double windowMin = double.MaxValue;
+            double windowMax = double.MinValue;
+
+            for (int i = 0; i < currentCount; i++)
+            {
+                double val = _windowCopy[i];
+                windowSum += val;
+                if (val < windowMin) windowMin = val;
+                if (val > windowMax) windowMax = val;
+            }
+            double windowMean = windowSum / currentCount;
+
+            TxtFooter.Text = $"10s-Fenster (N={currentCount}): Mittel = {windowMean:F2} | Min = {windowMin:F2} | Max = {windowMax:F2} | Anomalien: {_anomalyCount}";
+        }
 
         // Welford-Grenzlinien anpassen
         if (_welford.Count > 10)
@@ -115,15 +168,22 @@ public partial class MainWindow : Window
             bool isAnomaly = _welford.IsAnomaly(signal, 3.0);
             if (isAnomaly)
             {
-                StatusBadge.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(160, 30, 30));
+                _anomalyHoldTicks = 25;
+                _anomalyCount++;
+            }
+
+            if (_anomalyHoldTicks > 0)
+            {
+                _anomalyHoldTicks--;
+                StatusBadge.Background = AnomalyBgBrush;
                 TxtStatusBadge.Text = "! ANOMALIE ERKANNT (> 3 SIGMA) !";
-                TxtStatusBadge.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 120, 120));
+                TxtStatusBadge.Foreground = AnomalyFgBrush;
             }
             else
             {
-                StatusBadge.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(27, 77, 27));
+                StatusBadge.Background = NormalBgBrush;
                 TxtStatusBadge.Text = "SIGNAL IM NORMALBEREICH";
-                TxtStatusBadge.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(152, 251, 152));
+                TxtStatusBadge.Foreground = NormalFgBrush;
             }
 
             TxtToleranceBand.Text = $"[{lower:F1} ... {upper:F1}]";
@@ -158,7 +218,10 @@ public partial class MainWindow : Window
         _buffer.Clear();
         _welford.Reset();
         _streamer.Clear();
+        _referenceStreamer.Clear();
         _simTime = 0.0;
+        _anomalyCount = 0;
+        _anomalyHoldTicks = 0;
         Plot1.Refresh();
 
         TxtCount.Text = "0";
@@ -167,12 +230,36 @@ public partial class MainWindow : Window
         TxtStdDev.Text = "--.-";
         TxtVariance.Text = "--.-";
         TxtToleranceBand.Text = "[--.- ... --.-]";
-        StatusBadge.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(27, 77, 27));
+        StatusBadge.Background = NormalBgBrush;
         TxtStatusBadge.Text = "SIGNAL IM NORMALBEREICH";
+        TxtFooter.Text = "Telemetrie zurückgesetzt. Abtastrate: 50 Hz.";
     }
 
     private void BtnInjectAnomaly_Click(object sender, RoutedEventArgs e)
     {
         _injectAnomalyFlag = true;
+    }
+
+    private void CmbView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        // Das Event feuert schon während InitializeComponent() → dann nichts tun
+        if (!IsLoaded || StageAHost is null || RacingView is null) return;
+
+        bool trackB = CmbView.SelectedIndex == 1;
+
+        StageAHost.Visibility = trackB ? Visibility.Collapsed : Visibility.Visible;
+        RacingView.Visibility = trackB ? Visibility.Visible : Visibility.Collapsed;
+
+        if (trackB)
+        {
+            // Stufe-A-Timer anhalten; Track B startet sich selbst (IsVisibleChanged)
+            _stageAWasRunning = _timer.IsEnabled;
+            _timer.Stop();
+        }
+        else if (_stageAWasRunning)
+        {
+            // Nur fortsetzen, wenn Stufe A vorher nicht manuell pausiert war
+            _timer.Start();
+        }
     }
 }
