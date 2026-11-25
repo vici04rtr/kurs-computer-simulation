@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+
+    <!-- Benchmark-Hygiene: Methoden mit Schleifen (Simulationskerne) werden sofort voll optimiert kompiliert
+         statt erst nach Tier-0 -> OSR -> Tier-1. So verfälscht die JIT-Aufwärmphase die Messreihen nicht. -->
+    <TieredCompilationQuickJitForLoops>false</TieredCompilationQuickJitForLoops>
+  </PropertyGroup>
+
+</Project>
